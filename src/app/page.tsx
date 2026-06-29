@@ -1,65 +1,164 @@
-import Image from "next/image";
+"use client";
+
+import dynamic from "next/dynamic";
+import { useMemo, useState } from "react";
+import { Glass, GlassFilter } from "@/components/Glass";
+import PlaceComposer from "@/components/PlaceComposer";
+import Readout from "@/components/Readout";
+import { ColorAssigner, PALETTE, type SpanColor } from "@/lib/colors";
+import {
+  featureBounds,
+  placeOverlay,
+  readout,
+  unionBounds,
+  type Bounds,
+} from "@/lib/geo";
+import type { Place } from "@/lib/types";
+
+const SpanMap = dynamic(() => import("@/components/SpanMap"), { ssr: false });
 
 export default function Home() {
+  const [assigner] = useState(() => new ColorAssigner());
+
+  const [reference, setReference] = useState<Place | null>(null);
+  const [target, setTarget] = useState<Place | null>(null);
+  const [referenceColor, setReferenceColor] = useState<SpanColor>(PALETTE[0]);
+  const [targetColor, setTargetColor] = useState<SpanColor>(PALETTE[1]);
+  const [placement, setPlacement] = useState<[number, number] | null>(null);
+  const [projection, setProjection] = useState<"globe" | "mercator">("globe");
+  const [resetKey, setResetKey] = useState(0);
+
+  function reset() {
+    setReference(null);
+    setTarget(null);
+    setPlacement(null);
+    setProjection("globe");
+    setResetKey((k) => k + 1);
+  }
+
+  // Any new selection re-centers the familiar place (X) onto the new place (Y),
+  // and assigns/keeps that place's session color.
+  function selectReference(p: Place) {
+    setReference(p);
+    setReferenceColor(assigner.colorFor(p.id));
+    setPlacement((target ?? p).center);
+  }
+  function selectTarget(p: Place) {
+    setTarget(p);
+    setTargetColor(assigner.colorFor(p.id));
+    setPlacement(p.center);
+  }
+  function swap() {
+    if (!reference || !target) return;
+    setReference(target);
+    setTarget(reference);
+    setReferenceColor(assigner.colorFor(target.id));
+    setTargetColor(assigner.colorFor(reference.id));
+    setPlacement(reference.center);
+  }
+
+  const mercator = projection === "mercator";
+  const referenceFeature = useMemo(
+    () =>
+      reference && placement
+        ? placeOverlay(reference, placement, mercator)
+        : null,
+    [reference, placement, mercator],
+  );
+  const targetFeature = target?.feature ?? null;
+
+  const fitKey = `${reference?.id ?? ""}|${target?.id ?? ""}`;
+  const fitBounds = useMemo<Bounds | null>(() => {
+    if (reference && target)
+      return unionBounds(target, reference, target.center, mercator);
+    if (target) return featureBounds(target.feature);
+    if (reference) return featureBounds(reference.feature);
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitKey]);
+
+  const r = reference && target ? readout(reference, target) : null;
+  const both = !!reference && !!target;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <main className="relative h-dvh w-full overflow-hidden bg-[#eef0f2]">
+      <GlassFilter />
+
+      <SpanMap
+        targetFeature={targetFeature}
+        targetColor={targetColor}
+        referenceFeature={referenceFeature}
+        referenceColor={referenceColor}
+        referencePlace={reference}
+        placement={placement}
+        onDrag={setPlacement}
+        fitBounds={fitBounds}
+        fitKey={fitKey}
+        projection={projection}
+        onToggleProjection={() =>
+          setProjection((p) => (p === "globe" ? "mercator" : "globe"))
+        }
+        resetKey={resetKey}
+      />
+
+      {/* Wordmark */}
+      <div className="absolute left-6 top-5 z-20 select-none">
+        <Glass className="rounded-xl px-3.5 py-1.5" refract={false}>
+          <span className="text-lg font-bold tracking-tight text-foreground/85">
+            Span
+          </span>
+        </Glass>
+      </div>
+
+      {/* Reset — only with a full comparison; clears back to the cold globe. */}
+      {both && (
+        <div className="absolute right-6 top-5 z-30 duration-300 animate-in fade-in">
+          <Glass className="rounded-xl" refract={false}>
+            <button
+              type="button"
+              onClick={reset}
+              aria-label="Reset"
+              title="Reset"
+              className="grid h-9 w-9 cursor-pointer place-items-center text-foreground/70 outline-none transition-colors duration-150 hover:bg-foreground/[0.06] hover:text-foreground active:scale-95"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <svg width="19" height="19" viewBox="0 0 256 256" fill="currentColor" aria-hidden>
+                <path d="M224,128a96,96,0,0,1-94.71,96H128A95.38,95.38,0,0,1,62.1,197.8a8,8,0,0,1,11-11.63A80,80,0,1,0,71.43,71.39a3.07,3.07,0,0,1-.26.25L44.59,96H72a8,8,0,0,1,0,16H24a8,8,0,0,1-8-8V56a8,8,0,0,1,16,0V85.8L60.25,60A96,96,0,0,1,224,128Z" />
+              </svg>
+            </button>
+          </Glass>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      )}
+
+      {/* Composer: top-center, fixed position + size across cold/filled. */}
+      <div className="absolute left-1/2 top-4 z-30 max-w-[calc(100vw-2rem)] -translate-x-1/2">
+        <Glass
+          clip={false}
+          className="span-elastic group rounded-[1.75rem] px-6 py-3.5"
+        >
+          <div className="pointer-events-none absolute inset-0 rounded-[inherit] bg-foreground/[0.04] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          <PlaceComposer
+            reference={reference}
+            target={target}
+            referenceColor={reference ? referenceColor : null}
+            targetColor={target ? targetColor : null}
+            onReference={selectReference}
+            onTarget={selectTarget}
+            onSwap={swap}
+            compact={both}
+          />
+        </Glass>
+      </div>
+
+      {/* Readout */}
+      {r && (
+        <div className="pointer-events-none absolute bottom-7 left-1/2 z-20 -translate-x-1/2 px-4 duration-500 animate-in fade-in slide-in-from-bottom-3">
+          <Readout
+            data={r}
+            referenceColor={referenceColor}
+            targetColor={targetColor}
+          />
         </div>
-      </main>
-    </div>
+      )}
+    </main>
   );
 }
