@@ -1,0 +1,120 @@
+// Clip an admin boundary to land — removing oceans and bays (SF Bay, Hudson
+// Bay) while KEEPING inland water (Great Lakes etc.), since the Natural Earth
+// 10m land layer fills lakes as land. Shared by the build scripts and the
+// /api/geocode server route. Plain ESM (allowJs) so both can import it.
+//
+// Mask: data/land-mask.json = [{ b:[minx,miny,maxx,maxy], c: Polygon rings }]
+// (NE 10m land, exploded to single polygons, with a precomputed bbox each).
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { bbox, bboxClip, intersect, featureCollection, simplify } from "@turf/turf";
+
+const MASKS = { detail: null, coarse: null };
+
+function loadMask(coarse) {
+  const key = coarse ? "coarse" : "detail";
+  if (MASKS[key]) return MASKS[key];
+  const file = path.join(
+    process.cwd(),
+    "data",
+    coarse ? "land-mask-coarse.json" : "land-mask.json",
+  );
+  MASKS[key] = JSON.parse(readFileSync(file, "utf8"));
+  return MASKS[key];
+}
+
+const overlaps = (a, b) =>
+  a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
+
+const polyFeature = (coordinates) => ({
+  type: "Feature",
+  geometry: { type: "Polygon", coordinates },
+  properties: {},
+});
+
+function pushPolys(geom, out) {
+  if (!geom) return;
+  if (geom.type === "Polygon") out.push(geom.coordinates);
+  else if (geom.type === "MultiPolygon") for (const p of geom.coordinates) out.push(p);
+}
+
+/**
+ * Clip a Polygon/MultiPolygon to land. Returns a MultiPolygon (ocean removed,
+ * inland water kept) or null if the feature is entirely over water.
+ * Non-area input is returned untouched.
+ */
+export function clipToLand(geometry) {
+  if (!geometry) return null;
+  if (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon")
+    return geometry;
+
+  let feat = { type: "Feature", geometry, properties: {} };
+  const fb = bbox(feat);
+  const pieces = [];
+
+  // Coastline detail beyond the feature's own scale is both invisible and
+  // ruinously expensive (Canada vs. thousands of detailed Arctic islands).
+  // City-scale features keep full coastline detail; country-scale features use
+  // a pre-simplified coarse mask (tiny islets dropped) AND a simplified input,
+  // so the clip stays fast at the price of detail nobody can see at that zoom.
+  const diag = Math.hypot(fb[2] - fb[0], fb[3] - fb[1]);
+  const coarse = diag >= 3.5;
+  const mask = loadMask(coarse);
+  const tol = diag * 0.0015;
+  const simplifyLand = !coarse && tol >= 0.002;
+  // For big features, skip land polygons too small to matter — drops the long
+  // tail of islets that otherwise dominates the candidate count.
+  const minCandDiag = coarse ? diag * 0.004 : 0;
+
+  if (coarse) {
+    try {
+      feat = simplify(feat, { tolerance: Math.min(tol, 0.1), highQuality: false, mutate: false });
+    } catch {
+      /* keep full detail */
+    }
+  }
+
+  for (const m of mask) {
+    if (!overlaps(fb, m.b)) continue;
+    if (minCandDiag && Math.hypot(m.b[2] - m.b[0], m.b[3] - m.b[1]) < minCandDiag)
+      continue;
+
+    // The coarse mask is already small per polygon; only the detailed path
+    // needs the bbox pre-trim (a continent polygon carries thousands of
+    // coastline points, and every city would otherwise intersect the whole
+    // thing). feature ⊆ its own bbox, so feature ∩ (land ∩ bbox) == feature ∩
+    // land — the bbox cut never reaches the feature, so no seams appear.
+    let local = polyFeature(m.c);
+    if (!coarse) {
+      try {
+        local = bboxClip(local, fb);
+      } catch {
+        local = polyFeature(m.c);
+      }
+    }
+    let lg = local?.geometry;
+    if (!lg?.coordinates?.length) continue;
+    if (lg.type === "Polygon" && !lg.coordinates[0]?.length) continue;
+    if (simplifyLand) {
+      try {
+        local = simplify(local, { tolerance: Math.min(tol, 0.1), highQuality: false, mutate: true });
+        lg = local.geometry;
+        if (!lg?.coordinates?.length) continue;
+        if (lg.type === "Polygon" && !lg.coordinates[0]?.length) continue;
+      } catch {
+        /* keep unsimplified */
+      }
+    }
+
+    let clipped;
+    try {
+      clipped = intersect(featureCollection([feat, local]));
+    } catch {
+      clipped = null;
+    }
+    pushPolys(clipped?.geometry, pieces);
+  }
+
+  if (!pieces.length) return null;
+  return { type: "MultiPolygon", coordinates: pieces };
+}
