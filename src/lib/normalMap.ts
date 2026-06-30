@@ -1,11 +1,11 @@
 // Generate an edge-concentrated displacement (normal) map for a rounded rect:
 // zero in the center (no refraction), full strength at the rim (strong inward
-// refraction) — the thing the feTurbulence approach is missing, which warps
-// uniformly instead. R encodes x-shift, G encodes y-shift; 0.5 = "no shift"
-// per feDisplacementMap (displacement = scale * (channel - 0.5)).
+// refraction) — the thing feTurbulence misses (it warps uniformly). R encodes
+// x-shift, G encodes y-shift; 0.5 = "no shift" per feDisplacementMap
+// (displacement = scale * (channel - 0.5)).
 //
-// `bevel` = px band from the edge over which the lens ramps. Small bevel = a
-// hard glassy rim; large bevel = a soft pillow that bends more of the backdrop.
+// `bevel` = px band from the edge over which the lens ramps. Small = a hard
+// glassy rim; large = a soft pillow that bends more of the backdrop.
 export function makeNormalMap(
   w: number,
   h: number,
@@ -34,9 +34,7 @@ export function makeNormalMap(
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
-      const d = sd(x, y);
-      const depth = -d; // >0 inside the shape
-      // rim band: 1 right at the edge, easing to 0 once we're `bevel` px inside.
+      const depth = -sd(x, y); // >0 inside the shape
       let band = depth <= 0 ? 0 : Math.max(0, 1 - depth / bevel);
       band = Math.sin((band * Math.PI) / 2); // ease so the lens looks curved
       // inward unit normal = -gradient(sd) (sd grows outward)
@@ -45,7 +43,6 @@ export function makeNormalMap(
       const len = Math.hypot(nx, ny) || 1;
       nx /= len;
       ny /= len;
-      // full channel swing at the rim → real displacement of scale*0.5 px there
       img.data[i] = Math.round(255 * (0.5 + nx * band * 0.5));
       img.data[i + 1] = Math.round(255 * (0.5 + ny * band * 0.5));
       img.data[i + 2] = 128;

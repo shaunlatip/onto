@@ -2,7 +2,9 @@
 
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
-import { Glass, GlassFilter } from "@/components/Glass";
+import { Glass } from "@/components/Glass";
+import { GlassConfigProvider, useGlass } from "@/components/GlassConfig";
+import GlassControls from "@/components/GlassControls";
 import PlaceComposer from "@/components/PlaceComposer";
 import Readout from "@/components/Readout";
 import { ColorAssigner, PALETTE, type SpanColor } from "@/lib/colors";
@@ -18,6 +20,15 @@ import type { Place } from "@/lib/types";
 const SpanMap = dynamic(() => import("@/components/SpanMap"), { ssr: false });
 
 export default function Home() {
+  return (
+    <GlassConfigProvider>
+      <HomeInner />
+    </GlassConfigProvider>
+  );
+}
+
+function HomeInner() {
+  const { setOpen } = useGlass();
   const [assigner] = useState(() => new ColorAssigner());
 
   const [reference, setReference] = useState<Place | null>(null);
@@ -82,8 +93,6 @@ export default function Home() {
 
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-[#eef0f2]">
-      <GlassFilter />
-
       <SpanMap
         targetFeature={targetFeature}
         targetColor={targetColor}
@@ -101,14 +110,21 @@ export default function Home() {
         resetKey={resetKey}
       />
 
-      {/* Wordmark */}
-      <div className="absolute left-6 top-5 z-20 select-none">
-        <Glass className="rounded-xl px-3.5 py-1.5" refract={false}>
-          <span className="text-lg font-bold tracking-tight text-foreground/85">
+      {/* Wordmark — click to open the live glass controls */}
+      <div className="absolute left-6 top-5 z-40 select-none">
+        <Glass className="rounded-xl">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            title="Glass controls"
+            aria-label="Open glass controls"
+            className="cursor-pointer px-3.5 py-1.5 text-lg font-bold tracking-tight text-foreground/85 outline-none transition-opacity hover:opacity-70"
+          >
             Span
-          </span>
+          </button>
         </Glass>
       </div>
+      <GlassControls />
 
       {/* Reset — only with a full comparison; clears back to the cold globe. */}
       {both && (

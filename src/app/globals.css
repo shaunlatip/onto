@@ -135,44 +135,30 @@ body {
 }
 
 /*
-  Restrained "liquid glass". Two tiers:
-  - Tier 1 (everywhere): translucent fill + blur + saturate + hairline border
-    + an inset specular edge that catches light. This alone reads as glass.
-  - Tier 2 (Chromium): a gentle SVG displacement on the backdrop via the
-    .span-glass-refract overlay, for real edge refraction. Degrades to nothing
-    where backdrop-filter: url() isn't supported (Safari/Firefox), leaving Tier 1.
+  "Liquid glass" is now driven inline by the glass config (src/lib/glass.ts) and
+  the in-app controls menu — tint, blur, saturate, border, shadow, and a
+  per-instance SVG displacement filter (frosted / turbulence / edge-lens /
+  chromatic). This rule only forces an opaque, filter-free panel for users who
+  ask for reduced transparency — !important so it overrides the inline styles.
 */
-.span-glass {
-  position: relative;
-  isolation: isolate;
-  background: rgb(var(--glass-tint) / 0.5);
-  -webkit-backdrop-filter: blur(12px) saturate(1.8);
-  backdrop-filter: blur(12px) saturate(1.8);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow:
-    0 26px 70px -24px rgba(18, 20, 26, 0.38),
-    0 3px 10px -4px rgba(18, 20, 26, 0.18),
-    inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.9),
-    inset -1px -1px 1px rgba(255, 255, 255, 0.55),
-    inset 0 0 16px rgba(255, 255, 255, 0.45),
-    inset 0 -2px 4px rgba(18, 20, 26, 0.05);
-}
-
-/* The real refraction: displace the backdrop first, then a light blur. Big
-   smooth turbulence waves bend the map under the panel like glass (Chromium;
-   degrades to the frosted base elsewhere). */
-.span-glass.is-refract {
-  background: rgb(var(--glass-tint) / 0.34);
-  -webkit-backdrop-filter: url(#span-glass-distortion) blur(5px) saturate(1.9);
-  backdrop-filter: url(#span-glass-distortion) blur(5px) saturate(1.9);
+/* The default style (chromatic) uses backdrop-filter: url(), which only
+   Chromium supports. Where url() filters aren't supported (Safari/Firefox),
+   fall back to a plain frosted blur so panels don't render unfiltered. */
+@supports not (
+  (backdrop-filter: url("#a") blur(1px)) or
+    (-webkit-backdrop-filter: url("#a") blur(1px))
+) {
+  .span-glass {
+    -webkit-backdrop-filter: blur(11px) saturate(1.7) !important;
+    backdrop-filter: blur(11px) saturate(1.7) !important;
+  }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .span-glass,
-  .span-glass.is-refract {
-    background: rgb(var(--glass-tint) / 0.94);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+  .span-glass {
+    background: rgb(var(--glass-tint) / 0.94) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
   }
 }
 

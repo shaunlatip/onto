@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { makeNormalMap } from "./normalMap";
+import { makeNormalMap } from "@/lib/normalMap";
+import { quickHash } from "@/lib/glass";
 
 /*
   Glass Lab — compare the major branching approaches to "liquid glass" on the
@@ -251,15 +252,20 @@ export default function GlassLab() {
 
   const showDisp = branch !== "frosted";
 
+  // Rotate the live filter id when its contents change — Chromium caches a
+  // backdrop-filter by url() id and won't re-rasterize an in-place feImage
+  // (normal-map) edit, so bevel/size tweaks wouldn't show without this.
+  const liveSuffix = `live${quickHash(liveMap)}s${p.scale}c${p.chroma}f${Math.round(p.freq * 1000)}`;
+
   const liveFilters = useMemo(
     () => (
       <>
-        <FilterDef branch="turbulence" p={p} idSuffix="live" normalMap={liveMap} />
-        <FilterDef branch="lens" p={p} idSuffix="live" normalMap={liveMap} />
-        <FilterDef branch="chromatic" p={p} idSuffix="live" normalMap={liveMap} />
+        <FilterDef key={`t-${liveSuffix}`} branch="turbulence" p={p} idSuffix={liveSuffix} normalMap={liveMap} />
+        <FilterDef key={`l-${liveSuffix}`} branch="lens" p={p} idSuffix={liveSuffix} normalMap={liveMap} />
+        <FilterDef key={`c-${liveSuffix}`} branch="chromatic" p={p} idSuffix={liveSuffix} normalMap={liveMap} />
       </>
     ),
-    [p, liveMap],
+    [p, liveMap, liveSuffix],
   );
 
   return (
@@ -326,7 +332,7 @@ export default function GlassLab() {
         <section className="grid gap-8 lg:grid-cols-[460px_1fr]">
           <div className="flex flex-col items-start gap-3">
             <h2 className="text-xs font-semibold uppercase tracking-widest text-white/50">Live · {branch}</h2>
-            <GlassCard branch={branch} p={p} idSuffix="live" w={LIVE_W} h={LIVE_H}>
+            <GlassCard branch={branch} p={p} idSuffix={liveSuffix} w={LIVE_W} h={LIVE_H}>
               <div className="text-center">
                 <div className="text-lg font-semibold text-black/70 mix-blend-hard-light">Drag the sliders →</div>
                 <div className="text-xs text-black/50 mix-blend-hard-light">refraction shows best over the colorful backdrops</div>
