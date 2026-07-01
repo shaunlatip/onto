@@ -120,7 +120,7 @@ function HomeInner() {
             aria-label="Open glass controls"
             className="cursor-pointer px-3.5 py-1.5 text-lg font-bold tracking-tight text-foreground/85 outline-none transition-opacity hover:opacity-70"
           >
-            Span
+            Onto
           </button>
         </Glass>
       </div>

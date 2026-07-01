@@ -1,9 +1,9 @@
-# Span
+# Onto
 
 > See what any place looks like on top of anywhere else.
 
-Span is a small, focused tool for comparing the **true size** of two places. Type a
-sentence — _"See **San Francisco** on **Manhattan**"_ — and Span lays one place's
+Onto is a small, focused tool for comparing the **true size** of two places. Type a
+sentence — _"See **San Francisco** on **Manhattan**"_ — and Onto lays one place's
 real outline over the other, at correct ground scale, so you can actually feel the
 difference. Pick anything with a boundary: a city, a county, a metro area, a country.
 
@@ -12,7 +12,7 @@ the size of Boston", "Cambridge is smaller than Oakland") and tries to make that
 instinct visual and exact.
 
 <!-- Add a screenshot here (capture from a real browser — the map needs WebGL): -->
-<!-- ![Span](docs/screenshot.png) -->
+<!-- ![Onto](docs/screenshot.png) -->
 
 ## What it does
 
@@ -29,7 +29,7 @@ instinct visual and exact.
 
 - **Land-accurate boundaries.** Administrative boundaries legally extend over water —
   San Francisco's city-county line runs out into the bay and the Pacific, so the raw
-  shape is mostly water and unrecognizable. Span clips every boundary to land
+  shape is mostly water and unrecognizable. Onto clips every boundary to land
   (`src/lib/landclip.mjs`): oceans and bays are removed, **inland water is kept** (the
   Great Lakes stay part of a country). SF becomes the peninsula again; Canada loses
   Hudson Bay and the ocean between its Arctic islands.
@@ -80,7 +80,7 @@ for geometry · Tailwind CSS.
 
 ## Data sources & licenses
 
-Span's code is MIT (see [LICENSE](LICENSE)). The data it uses is under these licenses —
+Onto's code is MIT (see [LICENSE](LICENSE)). The data it uses is under these licenses —
 attribution is required and is shown in the app:
 
 - **OpenStreetMap** — boundary geocoding (Nominatim) and the land-polygon clip masks.

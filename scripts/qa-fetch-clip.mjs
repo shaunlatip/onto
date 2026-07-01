@@ -13,7 +13,7 @@ function finalize(geometry) {
   return smoothGeometry(cleanShape(geometry));
 }
 
-const UA = "Span/0.1 (https://github.com/shaunlatip/span)";
+const UA = "Onto/0.1 (https://github.com/shaunlatip/onto)";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchBoundary(q) {

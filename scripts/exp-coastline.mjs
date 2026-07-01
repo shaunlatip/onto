@@ -8,7 +8,7 @@ import { bbox, simplify } from "@turf/turf";
 import { clipToLand } from "../src/lib/landclip.mjs";
 import { smoothGeometry } from "../src/lib/smooth.mjs";
 
-const UA = "Span/0.1 (https://github.com/shaunlatip/span)";
+const UA = "Onto/0.1 (https://github.com/shaunlatip/onto)";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function fetchBoundary(q) {
   const url =

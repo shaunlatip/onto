@@ -21,7 +21,7 @@ export interface GeocodeResult {
 // Nominatim's policy requires identifying contact info and blocks fake/example
 // contacts (an "example.com" UA gets a hard 403). Point this at the real repo
 // or a contact URL before deploying.
-const USER_AGENT = "Span/0.1 (https://github.com/shaunlatip/span)";
+const USER_AGENT = "Onto/0.1 (https://github.com/shaunlatip/onto)";
 
 const NOMINATIM = "https://nominatim.openstreetmap.org/search";
 

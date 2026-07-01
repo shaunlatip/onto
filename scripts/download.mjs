@@ -9,7 +9,7 @@ if (!url || !out) {
   console.error("usage: node scripts/download.mjs <url> <outpath>");
   process.exit(1);
 }
-const res = await fetch(url, { headers: { "User-Agent": "Span/0.1" } });
+const res = await fetch(url, { headers: { "User-Agent": "Onto/0.1" } });
 if (!res.ok) {
   console.error(`HTTP ${res.status} ${res.statusText}`);
   process.exit(1);

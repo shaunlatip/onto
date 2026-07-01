@@ -10,7 +10,7 @@ const urbanist = Urbanist({
 });
 
 export const metadata: Metadata = {
-  title: "Span — see one place on another",
+  title: "Onto — see one place on another",
   description:
     "Lay a place you know over a place you don't, at true size, and feel how they compare.",
 };
