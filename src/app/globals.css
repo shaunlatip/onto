@@ -134,6 +134,35 @@ body {
   }
 }
 
+/* Space background — one fixed star tile plus three drifting at different,
+   very slow speeds (see SpaceField.tsx) for a subtle parallax behind the
+   globe's void. -fast tops out at the same speed the original two-layer
+   version used. */
+@keyframes starfield-drift-slow {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -640px -640px;
+  }
+}
+@keyframes starfield-drift-mid {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 560px -560px;
+  }
+}
+@keyframes starfield-drift-fast {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 480px -480px;
+  }
+}
+
 /*
   "Liquid glass" is now driven inline by the glass config (src/lib/glass.ts) and
   the in-app controls menu — tint, blur, saturate, border, shadow, and a
@@ -168,13 +197,15 @@ body {
 .maplibregl-ctrl-top-left {
   display: none;
 }
-.maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib {
+/* Bottom-left, offset to match the icon controls' bottom-right offset
+   (bottom-6 right-6 = 24px), mirrored. */
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib {
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(6px);
   border-radius: 9999px;
   font-size: 10px;
   padding: 1px 8px;
-  margin: 0 8px 8px 0;
+  margin: 0 0 24px 24px;
 }
 .maplibregl-ctrl-attrib a {
   color: var(--muted-foreground);

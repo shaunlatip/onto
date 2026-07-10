@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Map, {
+  AttributionControl,
   Layer,
   Source,
   type MapLayerMouseEvent,
@@ -10,13 +11,15 @@ import Map, {
 } from "react-map-gl/maplibre";
 import type { GeoJSONSource } from "maplibre-gl";
 import type { Feature } from "geojson";
-import { ACCENTS, BASEMAP_STYLE_URL, FIT_PADDING, INITIAL_VIEW } from "@/lib/map";
+import { ACCENTS, FIT_PADDING, INITIAL_VIEW } from "@/lib/map";
 import MapControls from "@/components/MapControls";
 import { clampBounds, placeOverlay, type Bounds } from "@/lib/geo";
 import type { SpanColor } from "@/lib/colors";
 import type { Place } from "@/lib/types";
 
 interface SpanMapProps {
+  /** Active basemap style.json URL — swapped live from the Onto menu. */
+  mapStyleUrl: string;
   /** Y — the new place, drawn static at its real location. */
   targetFeature: Feature | null;
   targetColor: SpanColor;
@@ -52,6 +55,7 @@ function globeFitZoom() {
 }
 
 export default function SpanMap({
+  mapStyleUrl,
   targetFeature,
   targetColor,
   referenceFeature,
@@ -278,11 +282,9 @@ export default function SpanMap({
   }, [loaded, projection, fitBounds]);
 
   // Hide continent labels — when zoomed out the highest-level label should be
-  // countries, not continents.
-  const onMapLoad = () => {
-    setLoaded(true);
-    const map = mapRef.current?.getMap();
-    if (!map) return;
+  // countries, not continents. Re-run on every style swap (e.g. picking a
+  // different basemap from the Onto menu), not just the initial load.
+  const hideContinentLabels = (map: ReturnType<MapRef["getMap"]>) => {
     for (const layer of map.getStyle().layers ?? []) {
       if (/continent/i.test(layer.id)) {
         try {
@@ -292,6 +294,25 @@ export default function SpanMap({
         }
       }
     }
+  };
+
+  const onMapLoad = () => {
+    setLoaded(true);
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    hideContinentLabels(map);
+    // A basemap swap (Onto menu) calls setStyle() under the hood, which resets
+    // the map to the new style's own default projection (mercator) — restore
+    // whatever the user had chosen so switching styles doesn't flip the globe
+    // back to flat.
+    map.on("style.load", () => {
+      hideContinentLabels(map);
+      try {
+        map.setProjection({ type: mercatorRef.current ? "mercator" : "globe" });
+      } catch {
+        /* older engines: stay mercator */
+      }
+    });
     // Grabbing the globe to pan stops the idle spin for good (zoom fires
     // 'zoomstart' instead, so wheel/buttons/pinch leave the spin running).
     map.on("dragstart", () => {
@@ -342,13 +363,9 @@ export default function SpanMap({
     <>
     <Map
       ref={mapRef}
-      mapStyle={BASEMAP_STYLE_URL}
+      mapStyle={mapStyleUrl}
       initialViewState={INITIAL_VIEW}
-      attributionControl={{
-        compact: true,
-        customAttribution:
-          "Metro areas: GHS-FUA, European Commission JRC (R2019A)",
-      }}
+      attributionControl={false}
       interactiveLayerIds={referenceFeature ? [REFERENCE_FILL] : []}
       onLoad={onMapLoad}
       onMouseDown={onMouseDown}
@@ -363,6 +380,11 @@ export default function SpanMap({
       maxPitch={0}
       style={{ position: "absolute", inset: 0 }}
     >
+      <AttributionControl
+        position="bottom-left"
+        compact
+        customAttribution="Metro areas: GHS-FUA, European Commission JRC (R2019A)"
+      />
       {targetFeature && (
         <Source id="target" type="geojson" data={targetFeature}>
           <Layer

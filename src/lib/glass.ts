@@ -29,7 +29,7 @@ export interface GlassConfig {
 export const DEFAULT_GLASS: GlassConfig = {
   branch: "chromatic",
   blur: 6,
-  tint: 0.5,
+  tint: 0.6,
   saturate: 1.8,
   scale: 40,
   freq: 0.004,

@@ -1,8 +1,44 @@
-/** Single source of truth for the basemap + accent colors.
- *  Swap BASEMAP_STYLE_URL to OpenFreeMap or a MapTiler style in one line. */
+/** Single source of truth for the basemap + accent colors. */
 
-export const BASEMAP_STYLE_URL =
-  "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+export interface MapStyleOption {
+  key: string;
+  label: string;
+  /** Shown in the style picker under the "Onto" menu. */
+  description: string;
+  url: string;
+}
+
+/** CARTO's three native basemap styles — same CDN, no API key, just a
+ *  different style.json. Ordered from quietest to loudest. */
+export const MAP_STYLES: MapStyleOption[] = [
+  {
+    key: "positron",
+    label: "Positron",
+    description: "Minimal grayscale.",
+    url: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+  },
+  {
+    key: "voyager",
+    label: "Voyager",
+    description: "Warmer and more colorful, still restrained.",
+    url: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
+  },
+  {
+    key: "dark-matter",
+    label: "Dark Matter",
+    description: "Dark mode.",
+    url: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+  },
+];
+
+export const DEFAULT_MAP_STYLE_KEY = "voyager";
+
+export function mapStyleUrl(key: string): string {
+  return (
+    MAP_STYLES.find((s) => s.key === key) ??
+    MAP_STYLES.find((s) => s.key === DEFAULT_MAP_STYLE_KEY)!
+  ).url;
+}
 
 /** Accent colors for the two outlines. Mirrors the --span-* tokens in
  *  globals.css; MapLibre paint needs plain color strings so they live here too. */

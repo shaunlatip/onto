@@ -1,12 +1,16 @@
 "use client";
 
+import { useBackground } from "@/components/BackgroundConfig";
 import { useGlass } from "@/components/GlassConfig";
+import { useMapStyle } from "@/components/MapStyleConfig";
+import { BACKGROUND_STYLES } from "@/lib/background";
 import {
   DEFAULT_GLASS,
   GLASS_BRANCHES,
   GLASS_SLIDERS,
   type GlassConfig,
 } from "@/lib/glass";
+import { MAP_STYLES } from "@/lib/map";
 
 function Slider({
   label,
@@ -49,12 +53,16 @@ function Slider({
  *  legible whatever the glass config is set to. */
 export default function GlassControls() {
   const { cfg, setCfg, open, setOpen } = useGlass();
+  const { styleKey, setStyleKey } = useMapStyle();
+  const { bgKey, setBgKey } = useBackground();
   if (!open) return null;
   const set = (k: keyof GlassConfig) => (v: number) =>
     setCfg((c) => ({ ...c, [k]: v }));
   const sliders = GLASS_SLIDERS.filter(
     (s) => !s.branches || s.branches.includes(cfg.branch),
   );
+  const activeStyle = MAP_STYLES.find((s) => s.key === styleKey);
+  const activeBg = BACKGROUND_STYLES.find((b) => b.key === bgKey);
 
   return (
     <div className="absolute left-6 top-[4.25rem] z-40 w-[19rem] max-w-[calc(100vw-3rem)] rounded-2xl bg-[#11141b]/92 p-4 text-white shadow-2xl ring-1 ring-white/10 backdrop-blur-md duration-200 animate-in fade-in slide-in-from-top-2">
@@ -79,6 +87,62 @@ export default function GlassControls() {
             ✕
           </button>
         </div>
+      </div>
+
+      {/* map style */}
+      <div className="mb-4">
+        <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-white/55">
+          Map style
+        </span>
+        <div className="grid grid-cols-3 gap-1.5">
+          {MAP_STYLES.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setStyleKey(s.key)}
+              className={`rounded-lg px-2 py-1.5 text-xs transition-colors ${
+                styleKey === s.key
+                  ? "bg-white text-black"
+                  : "bg-white/10 text-white/70 hover:bg-white/20"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        {activeStyle && (
+          <p className="mt-1.5 text-[10px] leading-snug text-white/40">
+            {activeStyle.description}
+          </p>
+        )}
+      </div>
+
+      {/* background */}
+      <div className="mb-4">
+        <span className="mb-1.5 block text-[10px] uppercase tracking-wide text-white/55">
+          Background
+        </span>
+        <div className="grid grid-cols-2 gap-1.5">
+          {BACKGROUND_STYLES.map((b) => (
+            <button
+              key={b.key}
+              type="button"
+              onClick={() => setBgKey(b.key)}
+              className={`rounded-lg px-2 py-1.5 text-xs transition-colors ${
+                bgKey === b.key
+                  ? "bg-white text-black"
+                  : "bg-white/10 text-white/70 hover:bg-white/20"
+              }`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+        {activeBg && (
+          <p className="mt-1.5 text-[10px] leading-snug text-white/40">
+            {activeBg.description}
+          </p>
+        )}
       </div>
 
       {/* branch selector */}

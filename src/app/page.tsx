@@ -2,12 +2,17 @@
 
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
+import { BackgroundProvider, useBackground } from "@/components/BackgroundConfig";
 import { Glass } from "@/components/Glass";
 import { GlassConfigProvider, useGlass } from "@/components/GlassConfig";
 import GlassControls from "@/components/GlassControls";
+import { MapStyleProvider, useMapStyle } from "@/components/MapStyleConfig";
 import PlaceComposer from "@/components/PlaceComposer";
 import Readout from "@/components/Readout";
+import SpaceField from "@/components/SpaceField";
+import { backgroundClassName } from "@/lib/background";
 import { ColorAssigner, PALETTE, type SpanColor } from "@/lib/colors";
+import { mapStyleUrl } from "@/lib/map";
 import {
   featureBounds,
   placeOverlay,
@@ -16,19 +21,44 @@ import {
   type Bounds,
 } from "@/lib/geo";
 import type { Place } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const SpanMap = dynamic(() => import("@/components/SpanMap"), { ssr: false });
+
+/** Phosphor caret-down — reveals to the right of the wordmark on hover / open,
+ *  rotates 180° to mean "open" (see the Onto menu toggle below). */
+function CaretIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 256 256"
+      fill="currentColor"
+      aria-hidden
+      className={className}
+    >
+      <path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z" />
+    </svg>
+  );
+}
 
 export default function Home() {
   return (
     <GlassConfigProvider>
-      <HomeInner />
+      <MapStyleProvider>
+        <BackgroundProvider>
+          <HomeInner />
+        </BackgroundProvider>
+      </MapStyleProvider>
     </GlassConfigProvider>
   );
 }
 
 function HomeInner() {
-  const { setOpen } = useGlass();
+  const { open, setOpen } = useGlass();
+  const { styleKey } = useMapStyle();
+  const { bgKey } = useBackground();
+  const [wordmarkHovered, setWordmarkHovered] = useState(false);
   const [assigner] = useState(() => new ColorAssigner());
 
   const [reference, setReference] = useState<Place | null>(null);
@@ -92,8 +122,12 @@ function HomeInner() {
   const both = !!reference && !!target;
 
   return (
-    <main className="relative h-dvh w-full overflow-hidden bg-[#eef0f2]">
+    <main
+      className={`relative h-dvh w-full overflow-hidden ${backgroundClassName(bgKey)}`}
+    >
+      {bgKey === "space" && <SpaceField />}
       <SpanMap
+        mapStyleUrl={mapStyleUrl(styleKey)}
         targetFeature={targetFeature}
         targetColor={targetColor}
         referenceFeature={referenceFeature}
@@ -110,17 +144,42 @@ function HomeInner() {
         resetKey={resetKey}
       />
 
-      {/* Wordmark — click to open the live glass controls */}
+      {/* Wordmark — click to open the live glass controls. On hover or while
+          open, the chip grows to reveal a caret that flips to mark state. The
+          caret stays mounted and its wrapper's grid-template-columns is what
+          animates 0 → icon width, so both the reveal AND the collapse (not
+          just the reveal) get a proper transition. */}
       <div className="absolute left-6 top-5 z-40 select-none">
         <Glass className="rounded-xl">
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
+            onMouseEnter={() => setWordmarkHovered(true)}
+            onMouseLeave={() => setWordmarkHovered(false)}
+            onFocus={() => setWordmarkHovered(true)}
+            onBlur={() => setWordmarkHovered(false)}
             title="Glass controls"
-            aria-label="Open glass controls"
-            className="cursor-pointer px-3.5 py-1.5 text-lg font-bold tracking-tight text-foreground/85 outline-none transition-opacity hover:opacity-70"
+            aria-label={open ? "Close glass controls" : "Open glass controls"}
+            aria-expanded={open}
+            className="flex cursor-pointer items-center whitespace-nowrap px-3.5 py-1.5 text-lg font-bold tracking-tight text-foreground/85 outline-none"
           >
             Onto
+            <span
+              className={cn(
+                "grid overflow-hidden transition-[grid-template-columns,margin-left] duration-200 ease-out-soft",
+                wordmarkHovered || open
+                  ? "ml-1.5 grid-cols-[12px]"
+                  : "ml-0 grid-cols-[0px]",
+              )}
+            >
+              <CaretIcon
+                className={cn(
+                  "min-w-[12px] transition-[transform,opacity] duration-200 ease-out-soft",
+                  wordmarkHovered || open ? "opacity-100" : "opacity-0",
+                  open && "rotate-180",
+                )}
+              />
+            </span>
           </button>
         </Glass>
       </div>
@@ -152,6 +211,11 @@ function HomeInner() {
           className="span-elastic group rounded-[1.75rem] px-6 py-3.5"
         >
           <div className="pointer-events-none absolute inset-0 rounded-[inherit] bg-foreground/[0.04] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          {/* Focus/active state — a light inset ring while a field inside is
+              being edited. Lives on its own layer (not Glass's own border/
+              shadow, which are set inline per the glass config) so it composes
+              cleanly with whatever glass look is active. */}
+          <div className="pointer-events-none absolute inset-0 rounded-[inherit] opacity-0 shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.6)] transition-opacity duration-200 ease-out-soft group-focus-within:opacity-100" />
           <PlaceComposer
             reference={reference}
             target={target}

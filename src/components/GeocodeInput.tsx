@@ -96,6 +96,11 @@ export default function GeocodeInput({
 
   // Position the portalled menu under the field (fixed; survives parent
   // stacking/overflow). Imperative style writes only — no re-render churn.
+  // Tracked every frame (not just on open/resize/scroll) because the field
+  // itself drifts horizontally as you type: the composer pill grows/shrinks
+  // under `field-sizing: content`, which is neither a resize nor a scroll —
+  // a one-shot placement would anchor to the field's position at open time
+  // and drift out of sync as the row keeps resizing.
   useEffect(() => {
     if (!open) return;
     const place = () => {
@@ -114,12 +119,11 @@ export default function GeocodeInput({
       d.style.top = `${r.bottom + 12}px`;
     };
     place();
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
-    return () => {
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
-    };
+    let raf = requestAnimationFrame(function loop() {
+      place();
+      raf = requestAnimationFrame(loop);
+    });
+    return () => cancelAnimationFrame(raf);
   }, [open]);
 
   function choose(r: GeocodeResult) {
