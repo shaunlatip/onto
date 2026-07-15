@@ -9,6 +9,7 @@ import GlassControls from "@/components/GlassControls";
 import { MapStyleProvider, useMapStyle } from "@/components/MapStyleConfig";
 import PlaceComposer from "@/components/PlaceComposer";
 import Readout from "@/components/Readout";
+import SettingsSheet from "@/components/SettingsSheet";
 import SpaceField from "@/components/SpaceField";
 import { backgroundClassName } from "@/lib/background";
 import { ColorAssigner, PALETTE, type SpanColor } from "@/lib/colors";
@@ -142,14 +143,16 @@ function HomeInner() {
           setProjection((p) => (p === "globe" ? "mercator" : "globe"))
         }
         resetKey={resetKey}
+        onReset={reset}
+        canReset={both}
+        readout={r}
       />
 
-      {/* Wordmark — click to open the live glass controls. On hover or while
-          open, the chip grows to reveal a caret that flips to mark state. The
-          caret stays mounted and its wrapper's grid-template-columns is what
-          animates 0 → icon width, so both the reveal AND the collapse (not
-          just the reveal) get a proper transition. */}
-      <div className="absolute left-6 top-5 z-40 select-none">
+      {/* Wordmark — desktop only; opens the live glass controls panel. On hover
+          or while open, the chip grows to reveal a caret that flips to mark
+          state. On mobile the same customization lives in the SettingsSheet,
+          reached from the bottom-bar kebab, so the wordmark is hidden there. */}
+      <div className="absolute left-6 top-5 z-40 hidden select-none sm:block">
         <Glass className="rounded-xl">
           <button
             type="button"
@@ -185,9 +188,14 @@ function HomeInner() {
       </div>
       <GlassControls />
 
-      {/* Reset — only with a full comparison; clears back to the cold globe. */}
+      {/* Onto customization on mobile — a bottom sheet opened from the bar's
+          kebab (returns null on desktop). */}
+      <SettingsSheet />
+
+      {/* Reset — desktop only; only with a full comparison. On mobile this folds
+          into the bottom-bar kebab. */}
       {both && (
-        <div className="absolute right-6 top-5 z-30 duration-300 animate-in fade-in">
+        <div className="absolute right-6 top-5 z-30 hidden duration-300 animate-in fade-in sm:block">
           <Glass className="rounded-xl" refract={false}>
             <button
               type="button"
@@ -204,11 +212,12 @@ function HomeInner() {
         </div>
       )}
 
-      {/* Composer: top-center, fixed position + size across cold/filled. */}
+      {/* Composer: top-center. Desktop keeps the original size; mobile scales
+          down (see PlaceComposer + the padding below). */}
       <div className="absolute left-1/2 top-4 z-30 max-w-[calc(100vw-2rem)] -translate-x-1/2">
         <Glass
           clip={false}
-          className="span-elastic group rounded-[1.75rem] px-6 py-3.5"
+          className="span-elastic group rounded-[1.75rem] px-4 py-3 sm:px-6 sm:py-3.5"
         >
           <div className="pointer-events-none absolute inset-0 rounded-[inherit] bg-foreground/[0.04] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           {/* Focus/active state — a light inset ring while a field inside is
@@ -229,9 +238,10 @@ function HomeInner() {
         </Glass>
       </div>
 
-      {/* Readout */}
+      {/* Readout — desktop only (centered card). Mobile shows it fused into the
+          bottom-bar pill instead. */}
       {r && (
-        <div className="pointer-events-none absolute bottom-7 left-1/2 z-20 -translate-x-1/2 px-4 duration-500 animate-in fade-in slide-in-from-bottom-3">
+        <div className="pointer-events-none absolute bottom-7 left-1/2 z-20 hidden -translate-x-1/2 px-4 duration-500 animate-in fade-in slide-in-from-bottom-3 sm:block">
           <Readout
             data={r}
             referenceColor={referenceColor}

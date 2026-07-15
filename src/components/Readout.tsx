@@ -9,6 +9,7 @@ import {
   type AreaUnit,
   type Readout as ReadoutData,
 } from "@/lib/geo";
+import { cn } from "@/lib/utils";
 
 const KM2_PER_MI2 = 2.589988;
 const KM_PER_MI = 1.609344;
@@ -26,13 +27,17 @@ interface ReadoutProps {
   targetColor: SpanColor;
 }
 
-/** Names are colored to match their outlines. Click "size" to cycle
- *  size → width → height; click a unit to flip km ⇄ mi. */
-export default function Readout({
+/** The comparison sentence + raw numbers, without any surrounding chrome. Two
+ *  size variants: `card` (desktop centered readout) and `bar` (the compact
+ *  mobile bottom bar, tucked beside the kebab). Alignment comes from the
+ *  wrapper; the `group`/hover affordances need a `group` ancestor (the card's
+ *  Glass, or the bar's Glass). */
+export function ReadoutContent({
   data,
   referenceColor,
   targetColor,
-}: ReadoutProps) {
+  variant,
+}: ReadoutProps & { variant: "card" | "bar" }) {
   const [metric, setMetric] = useState<Metric>("size");
   const [unit, setUnit] = useState<AreaUnit>("km");
 
@@ -53,7 +58,7 @@ export default function Readout({
     setMetric((m) => METRICS[(METRICS.indexOf(m) + 1) % METRICS.length]);
   const toggleUnit = () => setUnit((u) => (u === "km" ? "mi" : "km"));
 
-  // Affordances (soft grey pill) only show while the card is hovered.
+  // Affordances (soft grey pill) only show while the bar/card is hovered.
   const pill =
     "pointer-events-auto cursor-pointer rounded-[4px] px-1 py-0.5 transition-colors group-hover:bg-foreground/[0.06] hover:!bg-foreground/[0.12] hover:!text-foreground";
 
@@ -72,15 +77,15 @@ export default function Readout({
     </button>
   );
 
-  return (
-    <Glass
-      className="span-elastic group pointer-events-auto relative max-w-[min(90vw,30rem)] rounded-2xl px-5 py-4 text-center"
-      refract={false}
-    >
-      <div className="pointer-events-none absolute inset-0 rounded-[inherit] bg-foreground/[0.03] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+  const bar = variant === "bar";
 
+  return (
+    <>
       <p
-        className="text-pretty text-lg font-medium leading-snug tracking-tight text-foreground/75"
+        className={cn(
+          "text-pretty font-medium leading-snug tracking-tight text-foreground/75",
+          bar ? "text-sm sm:text-base" : "text-lg",
+        )}
         aria-label={aria}
       >
         <MorphText
@@ -106,7 +111,12 @@ export default function Readout({
           style={{ color: targetColor.ink }}
         />
       </p>
-      <p className="mt-1 text-xs tracking-wide text-muted-foreground">
+      <p
+        className={cn(
+          "tracking-wide text-muted-foreground",
+          bar ? "mt-0.5 text-[11px]" : "mt-1 text-xs",
+        )}
+      >
         <MorphText text={fmtNum(pair.familiar, isArea, unit)} className="tabular" />
         <button type="button" onClick={toggleUnit} className={pill} title="Switch units">
           <MorphText text={unitLabel} />
@@ -117,6 +127,29 @@ export default function Readout({
           <MorphText text={unitLabel} />
         </button>
       </p>
+    </>
+  );
+}
+
+/** Desktop readout — a centered glass card, bottom-center. Mobile renders the
+ *  same content fused into the bottom-bar pill (see BottomBar). */
+export default function Readout({
+  data,
+  referenceColor,
+  targetColor,
+}: ReadoutProps) {
+  return (
+    <Glass
+      className="span-elastic group pointer-events-auto relative max-w-[min(90vw,30rem)] rounded-2xl px-5 py-4 text-center"
+      refract={false}
+    >
+      <div className="pointer-events-none absolute inset-0 rounded-[inherit] bg-foreground/[0.03] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <ReadoutContent
+        data={data}
+        referenceColor={referenceColor}
+        targetColor={targetColor}
+        variant="card"
+      />
     </Glass>
   );
 }

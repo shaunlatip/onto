@@ -11,6 +11,8 @@ import {
   type GlassConfig,
 } from "@/lib/glass";
 import { MAP_STYLES } from "@/lib/map";
+import { useIsMobile } from "@/lib/useIsMobile";
+import AttributionLine from "@/components/AttributionLine";
 
 function Slider({
   label,
@@ -48,14 +50,16 @@ function Slider({
   );
 }
 
-/** Floating control panel that opens from the "Span" wordmark and tweaks the
- *  app's glass live. Deliberately a solid dark panel (not glass) so it stays
- *  legible whatever the glass config is set to. */
+/** Desktop floating control panel that opens from the "Onto" wordmark and tweaks
+ *  the app's glass live. On mobile the same controls live in the SettingsSheet
+ *  instead, so this returns null there. Deliberately a solid dark panel (not
+ *  glass) so it stays legible whatever the glass config is set to. */
 export default function GlassControls() {
   const { cfg, setCfg, open, setOpen } = useGlass();
   const { styleKey, setStyleKey } = useMapStyle();
   const { bgKey, setBgKey } = useBackground();
-  if (!open) return null;
+  const isMobile = useIsMobile();
+  if (!open || isMobile) return null;
   const set = (k: keyof GlassConfig) => (v: number) =>
     setCfg((c) => ({ ...c, [k]: v }));
   const sliders = GLASS_SLIDERS.filter(
@@ -182,6 +186,8 @@ export default function GlassControls() {
         Refraction (Edge lens / Chromatic) needs a Chromium browser and shows best
         over high-contrast map areas.
       </p>
+
+      <AttributionLine className="mt-3 border-t border-white/10 pt-3" />
     </div>
   );
 }

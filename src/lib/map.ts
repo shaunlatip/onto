@@ -33,6 +33,22 @@ export const MAP_STYLES: MapStyleOption[] = [
 
 export const DEFAULT_MAP_STYLE_KEY = "voyager";
 
+/** Data credits. All three basemaps are CARTO styles built on OpenStreetMap, so
+ *  the basemap attribution is constant; the metro line covers our overlay data.
+ *  Rendered as a line at the bottom of the Onto menu (desktop panel + mobile
+ *  sheet) rather than floating on the map. */
+export const ATTRIBUTION: ReadonlyArray<{ label: string; href?: string }> = [
+  {
+    label: "© OpenStreetMap contributors",
+    href: "https://www.openstreetmap.org/copyright",
+  },
+  { label: "© CARTO", href: "https://carto.com/attributions" },
+  {
+    label: "Metro areas: GHS-FUA, European Commission JRC (R2019A)",
+    href: "https://ghsl.jrc.ec.europa.eu/",
+  },
+];
+
 export function mapStyleUrl(key: string): string {
   return (
     MAP_STYLES.find((s) => s.key === key) ??
@@ -69,3 +85,7 @@ export const INITIAL_VIEW = {
 } as const;
 
 export const FIT_PADDING = 96;
+
+/** Cap on how far a single-place fit zooms in — kept in sync between the
+ *  fitBounds call and the tile prefetch that warms its landing tiles. */
+export const FIT_MAX_ZOOM = 12;

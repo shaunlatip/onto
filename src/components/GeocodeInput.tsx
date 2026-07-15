@@ -10,6 +10,7 @@ import {
 import { createPortal } from "react-dom";
 import { Glass } from "@/components/Glass";
 import MorphText from "@/components/MorphText";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SpanColor } from "@/lib/colors";
 import { buildPlace } from "@/lib/geo";
 import { geocode, type GeocodeResult } from "@/lib/nominatim";
@@ -234,7 +235,8 @@ export default function GeocodeInput({
                 No places found
               </div>
             ) : (
-              <ul className="max-h-72 overflow-auto py-1.5">
+              <ScrollArea viewportClassName="max-h-72">
+              <ul className="py-1.5">
                 {results.map((r, i) => {
                   const selectableIndex = results
                     .slice(0, i)
@@ -273,6 +275,7 @@ export default function GeocodeInput({
                   );
                 })}
               </ul>
+              </ScrollArea>
             )}
               </div>
             </Glass>

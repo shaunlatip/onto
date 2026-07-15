@@ -34,6 +34,8 @@ interface MapControlsProps {
   onToggleProjection: () => void;
 }
 
+/** Desktop-only map chrome (bottom-right). On mobile these actions fold into the
+ *  bottom-bar kebab instead, so the whole cluster is gated `hidden sm:flex`. */
 export default function MapControls({
   mapRef,
   projection,
@@ -61,7 +63,7 @@ export default function MapControls({
     "grid h-9 w-9 cursor-pointer place-items-center text-foreground/70 outline-none transition-colors duration-150 hover:bg-foreground/[0.06] hover:text-foreground focus-visible:bg-foreground/[0.06] active:bg-foreground/[0.1]";
 
   return (
-    <div className="pointer-events-auto absolute bottom-6 right-6 z-30 flex flex-col gap-2.5">
+    <div className="pointer-events-auto absolute bottom-6 right-6 z-30 hidden flex-col gap-2.5 sm:flex">
       <Glass className="flex flex-col rounded-xl divide-y divide-foreground/[0.08]">
         <button
           type="button"

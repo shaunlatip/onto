@@ -3,6 +3,7 @@
 import GeocodeInput from "@/components/GeocodeInput";
 import type { SpanColor } from "@/lib/colors";
 import type { Place } from "@/lib/types";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { cn } from "@/lib/utils";
 
 interface PlaceComposerProps {
@@ -37,11 +38,14 @@ export default function PlaceComposer({
   compact,
 }: PlaceComposerProps) {
   const canSwap = !!reference && !!target;
+  // Mobile shortens the familiar-place prompt so the cold sentence stays on one
+  // line; desktop keeps the fuller copy (it has the room).
+  const isMobile = useIsMobile();
 
   return (
     <div
       className={cn(
-        "select-none text-center text-xl font-medium leading-snug tracking-tight text-foreground/70 sm:text-2xl",
+        "select-none text-center text-lg font-medium leading-snug tracking-tight text-foreground/70 sm:text-2xl",
       )}
     >
       See{" "}
@@ -49,7 +53,7 @@ export default function PlaceComposer({
         value={reference}
         color={referenceColor}
         onSelect={onReference}
-        placeholder="somewhere you know"
+        placeholder={isMobile ? "somewhere" : "somewhere you know"}
         autoFocus={!compact}
       />
       {canSwap ? (

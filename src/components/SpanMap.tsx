@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Map, {
-  AttributionControl,
   Layer,
   Source,
   type MapLayerMouseEvent,
@@ -11,9 +10,11 @@ import Map, {
 } from "react-map-gl/maplibre";
 import type { GeoJSONSource } from "maplibre-gl";
 import type { Feature } from "geojson";
-import { ACCENTS, FIT_PADDING, INITIAL_VIEW } from "@/lib/map";
+import { ACCENTS, FIT_PADDING, FIT_MAX_ZOOM, INITIAL_VIEW } from "@/lib/map";
+import BottomBar from "@/components/BottomBar";
 import MapControls from "@/components/MapControls";
-import { clampBounds, placeOverlay, type Bounds } from "@/lib/geo";
+import { clampBounds, placeOverlay, type Bounds, type Readout } from "@/lib/geo";
+import { prefetchTilesForBounds } from "@/lib/tilePrefetch";
 import type { SpanColor } from "@/lib/colors";
 import type { Place } from "@/lib/types";
 
@@ -40,6 +41,12 @@ interface SpanMapProps {
   onToggleProjection: () => void;
   /** Increments on reset → zoom back out + resume the cold-globe spin. */
   resetKey: number;
+  /** Clears the comparison; lives in the bottom-bar kebab. */
+  onReset: () => void;
+  /** Only offer reset once a full comparison exists. */
+  canReset: boolean;
+  /** Comparison numbers; rendered fused with the kebab in the bottom bar. */
+  readout: Readout | null;
 }
 
 const REFERENCE_SOURCE = "reference";
@@ -68,6 +75,9 @@ export default function SpanMap({
   projection,
   onToggleProjection,
   resetKey,
+  onReset,
+  canReset,
+  readout,
 }: SpanMapProps) {
   const mapRef = useRef<MapRef>(null);
   const dragging = useRef(false);
@@ -189,12 +199,15 @@ export default function SpanMap({
     const map = mapRef.current?.getMap();
     if (!map) return;
     const b = clampBounds(fitBounds);
+    // Warm the destination's tiles up front so the basemap is already there when
+    // the fly lands, instead of popping in a beat after the camera settles.
+    prefetchTilesForBounds(map, b, FIT_PADDING, FIT_MAX_ZOOM);
     map.fitBounds(
       [
         [b[0], b[1]],
         [b[2], b[3]],
       ],
-      { padding: FIT_PADDING, duration: 900, maxZoom: 12 },
+      { padding: FIT_PADDING, duration: 900, maxZoom: FIT_MAX_ZOOM },
     );
     // fitBounds value intentionally excluded: re-fit on selection, not on drag.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -365,6 +378,11 @@ export default function SpanMap({
       ref={mapRef}
       mapStyle={mapStyleUrl}
       initialViewState={INITIAL_VIEW}
+      // Tiles render the instant they arrive rather than cross-fading in over
+      // ~300ms — paired with the prefetch above, textures land with the camera.
+      fadeDuration={0}
+      // Hold more tiles so revisits / swaps between two places don't re-download.
+      maxTileCacheSize={512}
       attributionControl={false}
       interactiveLayerIds={referenceFeature ? [REFERENCE_FILL] : []}
       onLoad={onMapLoad}
@@ -380,11 +398,8 @@ export default function SpanMap({
       maxPitch={0}
       style={{ position: "absolute", inset: 0 }}
     >
-      <AttributionControl
-        position="bottom-left"
-        compact
-        customAttribution="Metro areas: GHS-FUA, European Commission JRC (R2019A)"
-      />
+      {/* Attribution lives at the bottom of the Onto menu instead of on the map
+          — see AttributionLine in GlassControls / SettingsSheet. */}
       {targetFeature && (
         <Source id="target" type="geojson" data={targetFeature}>
           <Layer
@@ -432,10 +447,22 @@ export default function SpanMap({
         </Source>
       )}
     </Map>
+    {/* Desktop map chrome (bottom-right, hidden on mobile). */}
     <MapControls
       mapRef={mapRef}
       projection={projection}
       onToggleProjection={onToggleProjection}
+    />
+    {/* Mobile: readout + all actions fused into one bottom-bar kebab. */}
+    <BottomBar
+      mapRef={mapRef}
+      projection={projection}
+      onToggleProjection={onToggleProjection}
+      onReset={onReset}
+      canReset={canReset}
+      readout={readout}
+      referenceColor={referenceColor}
+      targetColor={targetColor}
     />
     </>
   );
