@@ -6,9 +6,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
-  // Client-fetched map data (metros, regions, the coarse land mask) is static
-  // and rarely changes — let the browser and CDN hold onto it so a return
-  // visitor never re-downloads the land mask before a selection can clip.
+  // Client-fetched map data. The land masks carry a version in the filename
+  // (see scripts/build-client-masks.mjs) so they're truly immutable at their
+  // URL — cache for a year; a return visitor never re-downloads a mask before
+  // a selection clips. metros/regions keep unversioned names, so they get a
+  // day + a week of stale-while-revalidate instead.
   async headers() {
     return [
       {
@@ -17,6 +19,17 @@ const nextConfig: NextConfig = {
           {
             key: "Cache-Control",
             value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+      // Later rules override same-key headers from earlier matches, so the
+      // mask-specific rule must come after the generic /data rule.
+      {
+        source: "/data/land-mask-:file",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },

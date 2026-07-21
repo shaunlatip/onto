@@ -313,6 +313,22 @@ export default function SpanMap({
     setLoaded(true);
     const map = mapRef.current?.getMap();
     if (!map) return;
+    // Test/debug seam: expose the map + a render-settled flag so automated
+    // review (scripts/webgl-review.mjs) can wait for the map to finish
+    // painting. Note the pre-selection globe spin re-renders continuously, so
+    // the flag only latches once the camera is at rest — wait on it AFTER a
+    // selection, not on the cold globe.
+    const w = window as unknown as {
+      __ontoMap?: typeof map;
+      __ontoMapIdle?: boolean;
+    };
+    w.__ontoMap = map;
+    map.on("render", () => {
+      w.__ontoMapIdle = false;
+    });
+    map.on("idle", () => {
+      w.__ontoMapIdle = true;
+    });
     hideContinentLabels(map);
     // A basemap swap (Onto menu) calls setStyle() under the hood, which resets
     // the map to the new style's own default projection (mercator) — restore
