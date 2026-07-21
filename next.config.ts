@@ -6,10 +6,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
-  // The /api/geocode route reads the land mask off disk at runtime; make sure
-  // the data files travel with the serverless bundle.
+  // The selection endpoint reads the coarse land mask off disk at runtime.
   outputFileTracingIncludes: {
-    "/api/geocode": ["./data/land-mask.json", "./data/land-mask-coarse.json"],
+    "/api/geocode": ["./data/land-mask-coarse.json"],
+  },
+  outputFileTracingExcludes: {
+    "/api/geocode": ["./data/land-mask.json"],
   },
 };
 

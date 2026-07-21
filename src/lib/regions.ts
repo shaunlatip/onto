@@ -21,6 +21,7 @@ function toResult(f: RegionFeature): RegionResult {
     shortLabel: f.properties.short,
     kind: "region",
     geometry: f.geometry,
+    needsLandClip: false,
     _search: `${f.properties.name} ${f.properties.short}`.toLowerCase(),
   };
 }

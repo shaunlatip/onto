@@ -5,6 +5,9 @@ import { CURATED_PLACES } from "./places";
 
 export type { GeocodeResult };
 
+const clientCache = new Map<string, GeocodeResult[]>();
+const CLIENT_CACHE_MAX = 50;
+
 /** Merge bundled metros + curated regions (which Nominatim lacks) ahead of the
  *  live OSM admin results. */
 export async function geocode(
@@ -37,16 +40,45 @@ async function fetchNominatim(
   q: string,
   signal: AbortSignal,
 ): Promise<GeocodeResult[]> {
+  const key = q.toLowerCase();
+  const cached = clientCache.get(key);
+  if (cached) return cached;
+
   try {
     const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`, {
       signal,
     });
     if (!res.ok) return curatedFallback(q);
     const data = (await res.json()) as { results: GeocodeResult[] };
-    return data.results.length ? data.results : curatedFallback(q);
+    const results = data.results.length ? data.results : curatedFallback(q);
+    if (clientCache.size >= CLIENT_CACHE_MAX) {
+      clientCache.delete(clientCache.keys().next().value!);
+    }
+    clientCache.set(key, results);
+    return results;
   } catch (err) {
     if ((err as Error)?.name === "AbortError") throw err;
     return curatedFallback(q);
+  }
+}
+
+export async function clipSelectedGeometry(
+  geometry: NonNullable<GeocodeResult["geometry"]>,
+  signal?: AbortSignal,
+): Promise<NonNullable<GeocodeResult["geometry"]>> {
+  try {
+    const res = await fetch("/api/geocode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ geometry }),
+      signal,
+    });
+    if (!res.ok) return geometry;
+    const data = (await res.json()) as { geometry?: GeocodeResult["geometry"] };
+    return data.geometry ?? geometry;
+  } catch (err) {
+    if ((err as Error)?.name === "AbortError") throw err;
+    return geometry;
   }
 }
 
@@ -61,5 +93,6 @@ function curatedFallback(q: string): GeocodeResult[] {
     shortLabel: p.shortLabel,
     kind: "city",
     geometry: p.feature.geometry,
+    needsLandClip: false,
   }));
 }
