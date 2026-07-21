@@ -1,5 +1,4 @@
 import type { Geometry, MultiPolygon, Polygon } from "geojson";
-import { clipToLand } from "@/lib/landclip.mjs";
 
 /** Proxy OpenStreetMap Nominatim:
  *  - the browser can't set the User-Agent Nominatim's policy requires
@@ -105,27 +104,4 @@ export async function GET(req: Request) {
   cache.set(key, results);
 
   return resultsResponse(results);
-}
-
-export async function POST(req: Request) {
-  let geometry: Geometry | undefined;
-  try {
-    ({ geometry } = (await req.json()) as { geometry?: Geometry });
-  } catch {
-    return Response.json({ error: "Invalid geometry" }, { status: 400 });
-  }
-
-  if (!isAreaGeometry(geometry)) {
-    return Response.json({ error: "A polygon boundary is required" }, { status: 400 });
-  }
-
-  try {
-    // The dropdown never renders boundaries. Loading the mask only after a
-    // choice keeps search fast, and the coarse shoreline is sufficient for the
-    // map's selected-place view while avoiding the 60 MB detailed mask.
-    const clipped = clipToLand(geometry, { coarse: true });
-    return Response.json({ geometry: clipped ?? geometry });
-  } catch {
-    return Response.json({ geometry });
-  }
 }
