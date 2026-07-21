@@ -26,6 +26,7 @@ function toResult(f: MetroFeature): MetroResult {
     shortLabel: short,
     kind: "metro area",
     geometry: f.geometry,
+    needsLandClip: false,
     _search: raw.toLowerCase(),
     pop: f.properties.pop,
   };

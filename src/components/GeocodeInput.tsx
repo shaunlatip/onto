@@ -13,7 +13,11 @@ import MorphText from "@/components/MorphText";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SpanColor } from "@/lib/colors";
 import { buildPlace } from "@/lib/geo";
-import { geocode, type GeocodeResult } from "@/lib/nominatim";
+import {
+  clipSelectedGeometry,
+  geocode,
+  type GeocodeResult,
+} from "@/lib/nominatim";
 import type { Place } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +48,7 @@ export default function GeocodeInput({
   const [touched, setTouched] = useState(false);
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selecting, setSelecting] = useState<string | null>(null);
   const [active, setActive] = useState(0);
   const open = editing && touched && query.trim().length >= 2;
 
@@ -127,10 +132,15 @@ export default function GeocodeInput({
     return () => cancelAnimationFrame(raf);
   }, [open]);
 
-  function choose(r: GeocodeResult) {
+  async function choose(r: GeocodeResult) {
     if (!r.geometry) return;
+    if (selecting) return;
+    setSelecting(r.id);
+    const geometry = r.needsLandClip
+      ? await clipSelectedGeometry(r.geometry)
+      : r.geometry;
     const place = buildPlace(
-      { type: "Feature", geometry: r.geometry, properties: {} },
+      { type: "Feature", geometry, properties: {} },
       { id: r.id, label: r.label, shortLabel: r.shortLabel },
     );
     onSelect(place);
@@ -138,6 +148,7 @@ export default function GeocodeInput({
     setQuery("");
     setTouched(false);
     setResults([]);
+    setSelecting(null);
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -246,7 +257,7 @@ export default function GeocodeInput({
                     <li key={r.id}>
                       <button
                         type="button"
-                        disabled={!r.geometry}
+                        disabled={!r.geometry || !!selecting}
                         onMouseEnter={() =>
                           r.geometry && setActive(selectableIndex)
                         }
@@ -264,7 +275,11 @@ export default function GeocodeInput({
                             {r.shortLabel}
                           </span>
                           <span className="block truncate text-xs text-muted-foreground">
-                            {r.geometry ? r.label : "no boundary available"}
+                            {selecting === r.id
+                              ? "Loading boundary…"
+                              : r.geometry
+                                ? r.label
+                                : "no boundary available"}
                           </span>
                         </span>
                         <span className="shrink-0 rounded-full bg-foreground/[0.05] px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">

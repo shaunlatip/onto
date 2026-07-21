@@ -16,6 +16,8 @@ export interface GeocodeResult {
   kind: string;
   /** Polygon/MultiPolygon if this place has a usable boundary, else null. */
   geometry: Polygon | MultiPolygon | null;
+  /** Whether selection should clip this Nominatim boundary to land. */
+  needsLandClip: boolean;
 }
 
 // Nominatim's policy requires identifying contact info and blocks fake/example
@@ -29,6 +31,9 @@ const NOMINATIM = "https://nominatim.openstreetmap.org/search";
 // debounce + this cache keep us well under for a portfolio tool.
 const cache = new Map<string, GeocodeResult[]>();
 const CACHE_MAX = 200;
+const SEARCH_HEADERS = {
+  "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800",
+};
 
 function isAreaGeometry(g: Geometry | undefined): g is Polygon | MultiPolygon {
   return !!g && (g.type === "Polygon" || g.type === "MultiPolygon");
@@ -45,13 +50,17 @@ interface NominatimItem {
   geojson?: Geometry;
 }
 
+function resultsResponse(results: GeocodeResult[]) {
+  return Response.json({ results }, { headers: SEARCH_HEADERS });
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim() ?? "";
-  if (q.length < 2) return Response.json({ results: [] });
+  if (q.length < 2) return resultsResponse([]);
 
   const key = q.toLowerCase();
-  if (cache.has(key)) return Response.json({ results: cache.get(key) });
+  if (cache.has(key)) return resultsResponse(cache.get(key)!);
 
   const url = new URL(NOMINATIM);
   url.searchParams.set("format", "jsonv2");
@@ -73,29 +82,19 @@ export async function GET(req: Request) {
     });
     if (res.ok) items = (await res.json()) as NominatimItem[];
   } catch {
-    return Response.json({ results: [] });
+    return resultsResponse([]);
   }
 
   const results: GeocodeResult[] = items.map((it) => {
     const label = it.display_name ?? it.name ?? "Unknown";
     const raw = isAreaGeometry(it.geojson) ? it.geojson : null;
-    // Clip admin boundaries to land so oceans/bays (SF Bay, Hudson Bay) drop
-    // out while inland water stays. Falls back to the raw shape if the clip
-    // fails or leaves nothing — a result must never vanish because of this.
-    let geometry = raw;
-    if (raw) {
-      try {
-        geometry = (clipToLand(raw) as Polygon | MultiPolygon | null) ?? raw;
-      } catch {
-        geometry = raw;
-      }
-    }
     return {
       id: `${it.osm_type ?? "n"}${it.osm_id ?? label}`,
       label,
       shortLabel: it.name ?? label.split(",")[0]?.trim() ?? label,
       kind: it.addresstype ?? it.type ?? it.class ?? "place",
-      geometry,
+      geometry: raw,
+      needsLandClip: !!raw,
     };
   });
 
@@ -105,5 +104,28 @@ export async function GET(req: Request) {
   if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
   cache.set(key, results);
 
-  return Response.json({ results });
+  return resultsResponse(results);
+}
+
+export async function POST(req: Request) {
+  let geometry: Geometry | undefined;
+  try {
+    ({ geometry } = (await req.json()) as { geometry?: Geometry });
+  } catch {
+    return Response.json({ error: "Invalid geometry" }, { status: 400 });
+  }
+
+  if (!isAreaGeometry(geometry)) {
+    return Response.json({ error: "A polygon boundary is required" }, { status: 400 });
+  }
+
+  try {
+    // The dropdown never renders boundaries. Loading the mask only after a
+    // choice keeps search fast, and the coarse shoreline is sufficient for the
+    // map's selected-place view while avoiding the 60 MB detailed mask.
+    const clipped = clipToLand(geometry, { coarse: true });
+    return Response.json({ geometry: clipped ?? geometry });
+  } catch {
+    return Response.json({ geometry });
+  }
 }

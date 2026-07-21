@@ -43,7 +43,7 @@ function pushPolys(geom, out) {
  * inland water kept) or null if the feature is entirely over water.
  * Non-area input is returned untouched.
  */
-export function clipToLand(geometry) {
+export function clipToLand(geometry, { coarse: useCoarse } = {}) {
   if (!geometry) return null;
   if (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon")
     return geometry;
@@ -58,7 +58,7 @@ export function clipToLand(geometry) {
   // a pre-simplified coarse mask (tiny islets dropped) AND a simplified input,
   // so the clip stays fast at the price of detail nobody can see at that zoom.
   const diag = Math.hypot(fb[2] - fb[0], fb[3] - fb[1]);
-  const coarse = diag >= 3.5;
+  const coarse = useCoarse ?? diag >= 3.5;
   const mask = loadMask(coarse);
   const tol = diag * 0.0015;
   const simplifyLand = !coarse && tol >= 0.002;
