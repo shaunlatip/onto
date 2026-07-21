@@ -62,26 +62,6 @@ async function fetchNominatim(
   }
 }
 
-export async function clipSelectedGeometry(
-  geometry: NonNullable<GeocodeResult["geometry"]>,
-  signal?: AbortSignal,
-): Promise<NonNullable<GeocodeResult["geometry"]>> {
-  try {
-    const res = await fetch("/api/geocode", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ geometry }),
-      signal,
-    });
-    if (!res.ok) return geometry;
-    const data = (await res.json()) as { geometry?: GeocodeResult["geometry"] };
-    return data.geometry ?? geometry;
-  } catch (err) {
-    if ((err as Error)?.name === "AbortError") throw err;
-    return geometry;
-  }
-}
-
 /** If the network is down, still let the curated cities resolve. */
 function curatedFallback(q: string): GeocodeResult[] {
   const needle = q.toLowerCase();

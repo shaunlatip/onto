@@ -13,11 +13,8 @@ import MorphText from "@/components/MorphText";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SpanColor } from "@/lib/colors";
 import { buildPlace } from "@/lib/geo";
-import {
-  clipSelectedGeometry,
-  geocode,
-  type GeocodeResult,
-} from "@/lib/nominatim";
+import { clipSelectedGeometry, prefetchLandMask } from "@/lib/landmask";
+import { geocode, type GeocodeResult } from "@/lib/nominatim";
 import type { Place } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -203,7 +200,13 @@ export default function GeocodeInput({
           placeholder={value?.shortLabel ?? placeholder}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
-          onFocus={() => setEditing(true)}
+          onFocus={() => {
+            setEditing(true);
+            // Warm the land mask in the background while the user types, so the
+            // in-browser clip on selection is instant rather than waiting on a
+            // multi-MB download at click time.
+            prefetchLandMask();
+          }}
           role="combobox"
           aria-expanded={open}
           aria-controls={listId}

@@ -6,12 +6,21 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
-  // The selection endpoint reads the coarse land mask off disk at runtime.
-  outputFileTracingIncludes: {
-    "/api/geocode": ["./data/land-mask-coarse.json"],
-  },
-  outputFileTracingExcludes: {
-    "/api/geocode": ["./data/land-mask.json"],
+  // Client-fetched map data (metros, regions, the coarse land mask) is static
+  // and rarely changes — let the browser and CDN hold onto it so a return
+  // visitor never re-downloads the land mask before a selection can clip.
+  async headers() {
+    return [
+      {
+        source: "/data/:file*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+    ];
   },
 };
 
