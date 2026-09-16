@@ -350,20 +350,31 @@ export default function SpanMap({
     });
   };
 
-  const onMouseDown = (e: MapLayerMouseEvent) =>
-    beginDrag(
-      e,
-      [e.lngLat.lng, e.lngLat.lat],
-      !!e.features?.some((f) => f.layer.id === REFERENCE_FILL),
+  // react-map-gl only attaches `e.features` to *mouse* events, not touch ones,
+  // so on a touchscreen a press on the reference shape reports no hit and falls
+  // through to a map pan — you can't grab and move the shape. Fall back to an
+  // explicit hit-test at the press point, which works for both input types.
+  const pressHitsReference = (
+    e: MapLayerMouseEvent | MapLayerTouchEvent,
+  ): boolean => {
+    if (e.features?.some((f) => f.layer.id === REFERENCE_FILL)) return true;
+    const map = e.target;
+    if (!map.getLayer(REFERENCE_FILL)) return false;
+    return (
+      map.queryRenderedFeatures(e.point, { layers: [REFERENCE_FILL] }).length > 0
     );
+  };
+
+  const onMouseDown = (e: MapLayerMouseEvent) =>
+    beginDrag(e, [e.lngLat.lng, e.lngLat.lat], pressHitsReference(e));
   const onMouseMove = (e: MapLayerMouseEvent) =>
     moveDrag(e, [e.lngLat.lng, e.lngLat.lat]);
-  const onTouchStart = (e: MapLayerTouchEvent) =>
-    beginDrag(
-      e,
-      [e.lngLat.lng, e.lngLat.lat],
-      !!e.features?.some((f) => f.layer.id === REFERENCE_FILL),
-    );
+  const onTouchStart = (e: MapLayerTouchEvent) => {
+    // Leave multi-finger gestures (pinch-zoom) to the map; only a single-finger
+    // press should grab the shape.
+    if (e.originalEvent.touches.length > 1) return;
+    beginDrag(e, [e.lngLat.lng, e.lngLat.lat], pressHitsReference(e));
+  };
   const onTouchMove = (e: MapLayerTouchEvent) =>
     moveDrag(e, [e.lngLat.lng, e.lngLat.lat]);
 
