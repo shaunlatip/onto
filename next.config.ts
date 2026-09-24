@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // The Conductor Run script serves dev through portless at
+  // https://<branch>.onto.localhost. Next blocks dev resources (HMR, client
+  // chunks) from origins it doesn't know, which leaves the page unhydrated —
+  // no map, no controls. The prefix follows the branch name, so allow any.
+  allowedDevOrigins: ["*.onto.localhost"],
   // Client-fetched map data. The land masks carry a version in the filename
   // (see scripts/build-client-masks.mjs) so they're truly immutable at their
   // URL — cache for a year; a return visitor never re-downloads a mask before

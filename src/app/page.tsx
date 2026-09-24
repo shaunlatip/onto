@@ -69,6 +69,8 @@ function HomeInner() {
   const [placement, setPlacement] = useState<[number, number] | null>(null);
   const [projection, setProjection] = useState<"globe" | "mercator">("globe");
   const [resetKey, setResetKey] = useState(0);
+  // The camera has left the home globe (panned, or zoomed away from it).
+  const [viewMoved, setViewMoved] = useState(false);
 
   function reset() {
     setReference(null);
@@ -99,20 +101,16 @@ function HomeInner() {
     setPlacement(reference.center);
   }
 
-  const mercator = projection === "mercator";
   const referenceFeature = useMemo(
-    () =>
-      reference && placement
-        ? placeOverlay(reference, placement, mercator)
-        : null,
-    [reference, placement, mercator],
+    () => (reference && placement ? placeOverlay(reference, placement) : null),
+    [reference, placement],
   );
   const targetFeature = target?.feature ?? null;
 
   const fitKey = `${reference?.id ?? ""}|${target?.id ?? ""}`;
   const fitBounds = useMemo<Bounds | null>(() => {
     if (reference && target)
-      return unionBounds(target, reference, target.center, mercator);
+      return unionBounds(target, reference, target.center);
     if (target) return featureBounds(target.feature);
     if (reference) return featureBounds(reference.feature);
     return null;
@@ -121,6 +119,12 @@ function HomeInner() {
 
   const r = reference && target ? readout(reference, target) : null;
   const both = !!reference && !!target;
+  // Reset is on offer whenever there's something to undo: any chosen place
+  // (clears it — the fields have no other way back to empty), or, with
+  // nothing chosen, a view the user moved off the home globe.
+  const anyPlace = !!reference || !!target;
+  const showReset = anyPlace || viewMoved;
+  const resetLabel = anyPlace ? "Reset" : "Reset view";
 
   return (
     <main
@@ -144,7 +148,9 @@ function HomeInner() {
         }
         resetKey={resetKey}
         onReset={reset}
-        canReset={both}
+        canReset={showReset}
+        resetLabel={resetLabel}
+        onViewMovedChange={setViewMoved}
         readout={r}
       />
 
@@ -192,25 +198,30 @@ function HomeInner() {
           kebab (returns null on desktop). */}
       <SettingsSheet />
 
-      {/* Reset — desktop only; only with a full comparison. On mobile this folds
-          into the bottom-bar kebab. */}
-      {both && (
-        <div className="absolute right-6 top-5 z-30 hidden duration-300 animate-in fade-in sm:block">
-          <Glass className="rounded-xl" refract={false}>
-            <button
-              type="button"
-              onClick={reset}
-              aria-label="Reset"
-              title="Reset"
-              className="grid h-9 w-9 cursor-pointer place-items-center text-foreground/70 outline-none transition-colors duration-150 hover:bg-foreground/[0.06] hover:text-foreground active:scale-95"
-            >
-              <svg width="19" height="19" viewBox="0 0 256 256" fill="currentColor" aria-hidden>
-                <path d="M224,128a96,96,0,0,1-94.71,96H128A95.38,95.38,0,0,1,62.1,197.8a8,8,0,0,1,11-11.63A80,80,0,1,0,71.43,71.39a3.07,3.07,0,0,1-.26.25L44.59,96H72a8,8,0,0,1,0,16H24a8,8,0,0,1-8-8V56a8,8,0,0,1,16,0V85.8L60.25,60A96,96,0,0,1,224,128Z" />
-              </svg>
-            </button>
-          </Glass>
-        </div>
-      )}
+      {/* Reset — desktop only. On mobile this folds into the bottom-bar kebab.
+          Stays mounted so it can fade out as well as in; `inert` takes it out
+          of the tab order and pointer hit-testing while hidden. */}
+      <div
+        inert={!showReset}
+        className={cn(
+          "absolute right-6 top-5 z-30 hidden transition-[opacity,scale] duration-200 ease-out-soft sm:block",
+          showReset ? "scale-100 opacity-100" : "scale-95 opacity-0",
+        )}
+      >
+        <Glass className="rounded-xl" refract={false}>
+          <button
+            type="button"
+            onClick={reset}
+            aria-label={resetLabel}
+            title={resetLabel}
+            className="grid h-9 w-9 cursor-pointer place-items-center text-foreground/70 outline-none transition-colors duration-150 hover:bg-foreground/[0.06] hover:text-foreground active:scale-95"
+          >
+            <svg width="19" height="19" viewBox="0 0 256 256" fill="currentColor" aria-hidden>
+              <path d="M224,128a96,96,0,0,1-94.71,96H128A95.38,95.38,0,0,1,62.1,197.8a8,8,0,0,1,11-11.63A80,80,0,1,0,71.43,71.39a3.07,3.07,0,0,1-.26.25L44.59,96H72a8,8,0,0,1,0,16H24a8,8,0,0,1-8-8V56a8,8,0,0,1,16,0V85.8L60.25,60A96,96,0,0,1,224,128Z" />
+            </svg>
+          </button>
+        </Glass>
+      </div>
 
       {/* Composer: top-center. Desktop keeps the original size; mobile scales
           down (see PlaceComposer + the padding below). */}

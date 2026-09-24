@@ -44,6 +44,7 @@ interface BottomBarProps {
   onToggleProjection: () => void;
   onReset: () => void;
   canReset: boolean;
+  resetLabel: string;
   readout: ReadoutData | null;
   referenceColor: SpanColor;
   targetColor: SpanColor;
@@ -59,6 +60,7 @@ export default function BottomBar({
   onToggleProjection,
   onReset,
   canReset,
+  resetLabel,
   readout,
   referenceColor,
   targetColor,
@@ -173,7 +175,7 @@ export default function BottomBar({
                 className={cn(row, "rounded-b-2xl")}
               >
                 <Icon d={ICON.reset} size={17} />
-                Reset
+                {resetLabel}
               </button>
             )}
           </Glass>

@@ -77,12 +77,20 @@ export const ACCENTS = {
   },
 } as const;
 
-/** Whole-world resting view before anything is chosen. */
-export const INITIAL_VIEW = {
-  longitude: -25,
-  latitude: 22,
-  zoom: 1.3,
-} as const;
+/** Home view: the whole-world globe shown before anything is chosen, and what
+ *  reset returns to. The idle drift only changes longitude from here. */
+export const HOME_CENTER: [number, number] = [10, 24];
+
+/** Home zoom — sizes the globe to ~fill the smaller viewport dimension, with a
+ *  little margin, so it works across portrait/landscape and varying heights. */
+export function homeZoom(): number {
+  const min = Math.min(window.innerWidth, window.innerHeight);
+  return Math.max(1.3, Math.log2(min / 185));
+}
+
+/** How far (in zoom levels) the camera can sit from home zoom and still count
+ *  as "home" — absorbs small wheel nudges; one zoom-button press exceeds it. */
+export const HOME_ZOOM_TOLERANCE = 0.5;
 
 export const FIT_PADDING = 96;
 

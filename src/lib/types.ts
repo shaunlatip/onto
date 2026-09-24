@@ -2,10 +2,11 @@ import type { Feature, Polygon, MultiPolygon } from "geojson";
 
 export type PlaceGeometry = Polygon | MultiPolygon;
 
-/** Normalized vertex offsets relative to a place's centroid, stored as
- *  MultiPolygon nesting (polygons → rings → [Δlon, Δlat]). Precomputed once
- *  on select so the drag hot path is a pure multiply-add, no Turf. */
-export type Offsets = [number, number][][][];
+/** A place's vertices as unit vectors on the sphere, in a frame where its
+ *  centroid sits at lon 0 / lat 0 (the +x axis; +y east, +z north). MultiPolygon
+ *  nesting (polygons → rings), each ring an interleaved xyz array. Precomputed
+ *  once on select so dragging is one rotation per vertex, no Turf. */
+export type LocalRings = Float64Array[][];
 
 export interface Place {
   id: string;
@@ -15,8 +16,6 @@ export interface Place {
   shortLabel: string;
   /** [lon, lat] centroid of the real-world geometry. */
   center: [number, number];
-  /** Origin-centroid latitude φ₀ — the basis for the Mercator size correction. */
-  originLat: number;
   /** Geodesic ("true") area in square kilometers. */
   trueAreaKm2: number;
   /** True east-west and north-south extent of the bounding box, in km. */
@@ -24,6 +23,9 @@ export interface Place {
   heightKm: number;
   /** Original geometry at its real-world location (used for the static target Y). */
   feature: Feature<PlaceGeometry>;
-  /** Centroid-relative offsets for fast overlay placement (used for the moving X). */
-  offsets: Offsets;
+  /** Outline in its centroid's frame, for fast overlay placement (the moving X). */
+  local: LocalRings;
+  /** Centroid latitudes [south, north] between which the placed outline stays
+   *  inside the map's ±85.05° edge. Always includes the place's own latitude. */
+  latRange: [number, number];
 }
