@@ -134,6 +134,51 @@ body {
   }
 }
 
+/* Group text shimmer for in-progress states (see components/ui/shimmer.tsx):
+   one background-colored band sweeps left-to-right across every
+   [data-shimmer] string in the group, over muted text. Each string's gradient
+   is group-sized and offset by its measured position, so they all show slices
+   of the same band. --shimmer-x is registered so it can animate. */
+@property --shimmer-x {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: -30%;
+}
+[data-shimmering] {
+  animation: shimmer-sweep 2s linear infinite;
+}
+[data-shimmering] [data-shimmer] {
+  color: transparent;
+  background-image:
+    linear-gradient(
+      100deg,
+      #0000 calc(var(--shimmer-x) - 14%),
+      var(--color-background) var(--shimmer-x),
+      #0000 calc(var(--shimmer-x) + 14%)
+    ),
+    linear-gradient(var(--color-muted-foreground), var(--color-muted-foreground));
+  background-size: var(--shimmer-w, 100%) var(--shimmer-h, 100%), auto;
+  background-position:
+    calc(-1 * var(--shimmer-ox, 0px)) calc(-1 * var(--shimmer-oy, 0px)),
+    0 0;
+  background-repeat: no-repeat;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+@keyframes shimmer-sweep {
+  from {
+    --shimmer-x: -30%;
+  }
+  to {
+    --shimmer-x: 130%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-shimmering] {
+    animation: none;
+  }
+}
+
 /* Space background — one fixed star tile plus three drifting at different,
    very slow speeds (see SpaceField.tsx) for a subtle parallax behind the
    globe's void. -fast tops out at the same speed the original two-layer

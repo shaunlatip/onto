@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Glass } from "@/components/Glass";
 import MorphText from "@/components/MorphText";
+import { takesThe } from "@/lib/article";
 import type { SpanColor } from "@/lib/colors";
 import {
   formatMultiple,
@@ -15,6 +16,8 @@ const KM2_PER_MI2 = 2.589988;
 const KM_PER_MI = 1.609344;
 const METRICS = ["size", "width", "height"] as const;
 type Metric = (typeof METRICS)[number];
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function fmtNum(km: number, isArea: boolean, unit: AreaUnit): string {
   const v = unit === "km" ? km : km / (isArea ? KM2_PER_MI2 : KM_PER_MI);
@@ -58,13 +61,20 @@ export function ReadoutContent({
     setMetric((m) => METRICS[(METRICS.indexOf(m) + 1) % METRICS.length]);
   const toggleUnit = () => setUnit((u) => (u === "km" ? "mi" : "km"));
 
-  // Affordances (soft grey pill) only show while the bar/card is hovered.
+  // Affordances (soft grey pill) only show while the bar/card is hovered. The
+  // negative margin cancels the padding, so the word sits exactly where plain
+  // text would and the surrounding spaces stay ordinary word spaces.
   const pill =
-    "pointer-events-auto cursor-pointer rounded-[4px] px-1 py-0.5 transition-colors group-hover:bg-foreground/[0.06] hover:!bg-foreground/[0.12] hover:!text-foreground";
+    "pointer-events-auto -mx-1 cursor-pointer rounded-[4px] px-1 py-0.5 transition-colors group-hover:bg-foreground/[0.06] hover:!bg-foreground/[0.12] hover:!text-foreground";
 
+  // "The United States is … the size of the Special Capital Region of Jakarta."
+  const familiarThe = takesThe(data.familiarName);
+  const newThe = takesThe(data.newName);
+  const familiar = `${familiarThe ? "the " : ""}${data.familiarName}`;
+  const newPlace = `${newThe ? "the " : ""}${data.newName}`;
   const aria = sameSize
-    ? `${data.familiarName} is about the same ${metric} as ${data.newName}`
-    : `${data.familiarName} is ${ratioLabel} the ${metric} of ${data.newName}`;
+    ? `${capitalize(familiar)} is about the same ${metric} as ${newPlace}`
+    : `${capitalize(familiar)} is ${ratioLabel} the ${metric} of ${newPlace}`;
 
   const metricBtn = (
     <button
@@ -88,6 +98,7 @@ export function ReadoutContent({
         )}
         aria-label={aria}
       >
+        {familiarThe && "The "}
         <MorphText
           text={data.familiarName}
           className="font-semibold transition-colors duration-300"
@@ -105,6 +116,7 @@ export function ReadoutContent({
             the {metricBtn} of
           </>
         )}{" "}
+        {newThe && "the "}
         <MorphText
           text={data.newName}
           className="font-semibold transition-colors duration-300"
@@ -117,12 +129,12 @@ export function ReadoutContent({
           bar ? "mt-0.5 text-[11px]" : "mt-1 text-xs",
         )}
       >
-        <MorphText text={fmtNum(pair.familiar, isArea, unit)} className="tabular" />
+        <MorphText text={fmtNum(pair.familiar, isArea, unit)} className="tabular" />{" "}
         <button type="button" onClick={toggleUnit} className={pill} title="Switch units">
           <MorphText text={unitLabel} />
         </button>{" "}
         <span className="text-muted-foreground/40">·</span>{" "}
-        <MorphText text={fmtNum(pair.new, isArea, unit)} className="tabular" />
+        <MorphText text={fmtNum(pair.new, isArea, unit)} className="tabular" />{" "}
         <button type="button" onClick={toggleUnit} className={pill} title="Switch units">
           <MorphText text={unitLabel} />
         </button>

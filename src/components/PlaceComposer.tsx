@@ -18,7 +18,8 @@ interface PlaceComposerProps {
   compact: boolean;
 }
 
-/** Phosphor arrows-left-right — the swap affordance revealed on hover. */
+/** Phosphor arrows-left-right — the swap affordance (hover on desktop, always
+ *  shown on touch). */
 function SwapIcon() {
   return (
     <svg width="1em" height="1em" viewBox="0 0 256 256" fill="currentColor" aria-hidden>
@@ -42,6 +43,8 @@ export default function PlaceComposer({
   // line; desktop keeps the fuller copy (it has the room).
   const isMobile = useIsMobile();
 
+  // All the non-place words ("See", "the", "on") share the one ink set here;
+  // the places carry their own session colors.
   return (
     <div
       className={cn(
@@ -55,25 +58,30 @@ export default function PlaceComposer({
         onSelect={onReference}
         placeholder={isMobile ? "somewhere" : "somewhere you know"}
         autoFocus={!compact}
-      />
+      />{" "}
       {canSwap ? (
+        // "on" stays a plain word between ordinary spaces, so its gaps match
+        // every other word gap; the icon overlays it without taking width, and
+        // the ::before pad gives the small word a comfortable hit area.
         <button
           type="button"
           onClick={onSwap}
           aria-label="Swap the two places"
           title="Swap"
-          className="relative mx-[0.22em] inline-grid h-[1em] w-[1.5em] cursor-pointer place-items-center align-baseline text-foreground/55 outline-none transition-[color,transform] duration-150 hover:text-foreground focus-visible:text-foreground active:scale-90"
+          className="relative cursor-pointer outline-none transition-[color,transform] duration-150 before:absolute before:-inset-x-1.5 before:-inset-y-1 hover:text-foreground focus-visible:text-foreground active:scale-90"
         >
-          <span className="col-start-1 row-start-1 transition-opacity duration-200 group-hover:opacity-0">
+          {/* Hover reveals the swap icon in place of "on". Touch has no hover,
+              so there the icon shows whenever a swap is possible. */}
+          <span className="transition-opacity duration-200 group-hover:opacity-0 [@media(hover:none)]:opacity-0">
             on
           </span>
-          <span className="col-start-1 row-start-1 flex translate-y-[0.08em] items-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          <span className="absolute inset-0 flex translate-y-[0.08em] items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
             <SwapIcon />
           </span>
         </button>
       ) : (
-        <span className="mx-[0.22em] text-foreground/55">on</span>
-      )}
+        "on"
+      )}{" "}
       <GeocodeInput
         value={target}
         color={targetColor}

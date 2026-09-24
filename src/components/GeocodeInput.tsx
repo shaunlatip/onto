@@ -11,12 +11,22 @@ import { createPortal } from "react-dom";
 import { Glass } from "@/components/Glass";
 import MorphText from "@/components/MorphText";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ShimmerGroup } from "@/components/ui/shimmer";
+import { takesThe } from "@/lib/article";
 import type { SpanColor } from "@/lib/colors";
 import { buildPlace } from "@/lib/geo";
 import { clipSelectedGeometry, prefetchLandMask } from "@/lib/landmask";
 import { geocode, type GeocodeResult } from "@/lib/nominatim";
 import type { Place } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+/** OSM addresstypes arrive as raw keys ("state_district", "ISO3166-2-lvl4");
+ *  show them as sentence-case words. */
+function kindLabel(kind: string): string {
+  if (/^iso3166/i.test(kind)) return "Region";
+  const words = kind.replace(/[_-]+/g, " ").trim().toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
 interface GeocodeInputProps {
   value: Place | null;
@@ -181,6 +191,11 @@ export default function GeocodeInput({
 
   return (
     <span ref={rootRef} className="relative inline-flex items-baseline">
+      {/* "the" joins the sentence once a place that needs it is chosen ("on
+          the United States"); it's sentence text, so it keeps the neutral ink. */}
+      {!editing && value && takesThe(value.shortLabel) && (
+        <span className="span-morph whitespace-pre">the </span>
+      )}
       {!editing && value ? (
         <button
           type="button"
@@ -250,17 +265,26 @@ export default function GeocodeInput({
               </div>
             ) : (
               <ScrollArea viewportClassName="max-h-72">
-              <ul className="py-1.5">
+              {/* While a pick's boundary loads, one shimmer sweeps every
+                  string in the list; the picked row keeps its highlight. */}
+              <ShimmerGroup as="ul" active={!!selecting} className="py-1.5">
                 {results.map((r, i) => {
                   const selectableIndex = results
                     .slice(0, i)
                     .filter((x) => x.geometry).length;
-                  const isActive = !!r.geometry && selectableIndex === active;
+                  const isActive = selecting
+                    ? selecting === r.id
+                    : !!r.geometry && selectableIndex === active;
+                  const detail = r.geometry
+                    ? // `?? label`: responses cached before `detail` existed
+                      (r.detail ?? r.label)
+                    : "No boundary available";
                   return (
                     <li key={r.id}>
                       <button
                         type="button"
                         disabled={!r.geometry || !!selecting}
+                        aria-busy={selecting === r.id}
                         onMouseEnter={() =>
                           r.geometry && setActive(selectableIndex)
                         }
@@ -274,25 +298,29 @@ export default function GeocodeInput({
                         )}
                       >
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium text-foreground">
+                          <span
+                            data-shimmer
+                            className="block truncate text-sm font-medium text-foreground"
+                          >
                             {r.shortLabel}
                           </span>
-                          <span className="block truncate text-xs text-muted-foreground">
-                            {selecting === r.id
-                              ? "Loading boundary…"
-                              : r.geometry
-                                ? r.label
-                                : "no boundary available"}
-                          </span>
+                          {detail && (
+                            <span
+                              data-shimmer
+                              className="block truncate text-xs text-muted-foreground"
+                            >
+                              {detail}
+                            </span>
+                          )}
                         </span>
-                        <span className="shrink-0 rounded-full bg-foreground/[0.05] px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                          {r.kind}
+                        <span className="shrink-0 rounded-full bg-foreground/[0.06] px-2 py-0.5 text-[11px] font-medium text-foreground/65">
+                          <span data-shimmer>{kindLabel(r.kind)}</span>
                         </span>
                       </button>
                     </li>
                   );
                 })}
-              </ul>
+              </ShimmerGroup>
               </ScrollArea>
             )}
               </div>

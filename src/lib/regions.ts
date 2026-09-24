@@ -19,6 +19,11 @@ function toResult(f: RegionFeature): RegionResult {
     id: `region-${f.properties.short}`,
     label: `${f.properties.name} · ${f.properties.country}`,
     shortLabel: f.properties.short,
+    // "San Francisco Bay Area, United States"; "New England" just gets its country.
+    detail:
+      f.properties.name === f.properties.short
+        ? f.properties.country
+        : `${f.properties.name}, ${f.properties.country}`,
     kind: "region",
     geometry: f.geometry,
     needsLandClip: false,

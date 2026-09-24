@@ -1,4 +1,5 @@
 import type { Geometry, MultiPolygon, Polygon } from "geojson";
+import { worldRegion } from "@/lib/worldRegions";
 
 /** Proxy OpenStreetMap Nominatim:
  *  - the browser can't set the User-Agent Nominatim's policy requires
@@ -11,6 +12,10 @@ export interface GeocodeResult {
   label: string;
   /** Short leading token, e.g. "Boston". */
   shortLabel: string;
+  /** Secondary line in the menu: where the place is, without repeating its
+   *  name ("Suffolk County, Massachusetts, United States"; for a country, its
+   *  world region). Empty when there's nothing useful to add. */
+  detail: string;
   /** addresstype/class for a small badge, e.g. "city", "country". */
   kind: string;
   /** Polygon/MultiPolygon if this place has a usable boundary, else null. */
@@ -46,7 +51,18 @@ interface NominatimItem {
   type?: string;
   class?: string;
   addresstype?: string;
+  address?: { country_code?: string };
   geojson?: Geometry;
+}
+
+/** The display name minus the place's own name (and any postcode), so the
+ *  secondary line adds context instead of echoing the title. Countries have
+ *  nothing left over, so they get their world region. */
+function detailOf(it: NominatimItem, label: string, name: string): string {
+  const parts = label.split(",").map((p) => p.trim());
+  if (parts[0]?.toLowerCase() === name.toLowerCase()) parts.shift();
+  const rest = parts.filter((p) => p && !/^\d[\d\s-]*$/.test(p)).join(", ");
+  return rest || worldRegion(it.address?.country_code) || "";
 }
 
 function resultsResponse(results: GeocodeResult[]) {
@@ -87,10 +103,12 @@ export async function GET(req: Request) {
   const results: GeocodeResult[] = items.map((it) => {
     const label = it.display_name ?? it.name ?? "Unknown";
     const raw = isAreaGeometry(it.geojson) ? it.geojson : null;
+    const shortLabel = it.name ?? label.split(",")[0]?.trim() ?? label;
     return {
       id: `${it.osm_type ?? "n"}${it.osm_id ?? label}`,
       label,
-      shortLabel: it.name ?? label.split(",")[0]?.trim() ?? label,
+      shortLabel,
+      detail: detailOf(it, label, shortLabel),
       kind: it.addresstype ?? it.type ?? it.class ?? "place",
       geometry: raw,
       needsLandClip: !!raw,

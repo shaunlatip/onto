@@ -71,6 +71,7 @@ function curatedFallback(q: string): GeocodeResult[] {
     id: `curated-${p.id}`,
     label: p.label,
     shortLabel: p.shortLabel,
+    detail: p.label.split(", ").slice(1).join(", "),
     kind: "city",
     geometry: p.feature.geometry,
     needsLandClip: false,

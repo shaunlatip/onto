@@ -17,13 +17,27 @@ interface MetroFeature {
 
 let metrosPromise: Promise<MetroResult[]> | null = null;
 
+/** GHS-FUA stores country names with the spaces squeezed out
+ *  ("UnitedStates", "DemocraticRepublicoftheCongo"). */
+const COUNTRY_FIXES: Record<string, string> = {
+  DemocraticRepublicoftheCongo: "Democratic Republic of the Congo",
+  RepublicofCongo: "Republic of the Congo",
+  CotedIvoire: "Côte d'Ivoire",
+  Palestina: "Palestine",
+};
+function countryName(raw: string): string {
+  return COUNTRY_FIXES[raw] ?? raw.replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
 function toResult(f: MetroFeature): MetroResult {
   const raw = f.properties.name;
   const short = raw.split(" [")[0].trim();
+  const country = countryName(f.properties.country);
   return {
     id: `metro-${f.properties.iso}-${short}`,
-    label: `${short} metropolitan area · ${f.properties.country}`,
+    label: `${short} metropolitan area · ${country}`,
     shortLabel: short,
+    detail: country,
     kind: "metro area",
     geometry: f.geometry,
     needsLandClip: false,
